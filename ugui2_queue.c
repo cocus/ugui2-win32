@@ -15,9 +15,9 @@ void enqueue(node_t** head, void* data) {
 
 void* dequeue(node_t** head) {
     node_t* current, * prev = NULL;
-    int retval = -1;
+    void* retval = NULL;
 
-    if (*head == NULL) return -1;
+    if (*head == NULL) return NULL;
 
     current = *head;
     while (current->next != NULL) {

@@ -135,11 +135,15 @@
     <ClInclude Include="ugui2_colors.h" />
     <ClInclude Include="ugui2_config.h" />
     <ClInclude Include="ugui2_queue.h" />
+    <ClInclude Include="ugui2_fonts.h" />
+    <ClInclude Include="ugui2_window.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ugui2-win32.cpp" />
+    <ClCompile Include="font_6x8.c" />
+    <ClCompile Include="ugui2-win32.c" />
     <ClCompile Include="ugui2.c" />
     <ClCompile Include="ugui2_queue.c" />
+    <ClCompile Include="ugui2_window.c" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ugui2-win32.rc" />

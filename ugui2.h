@@ -31,34 +31,40 @@ typedef UG_U8                        UG2_COLOR;
 /* -- DEFINES                                                                    -- */
 /* -------------------------------------------------------------------------------- */
 /* Helpers */
-#define UG2_GetFontWidth(f)                            *(f+1)
-#define UG2_GetFontHeight(f)                           *(f+2)
-#define UG2_swap(x, y)                                    { x = y^x; y = x ^ y; x = y ^ x; }
+#define UG2_GetFontWidth(f)                             *(f+1)
+#define UG2_GetFontHeight(f)                            *(f+2)
+#define UG2_swap(x, y)                                  { x = y^x; y = x ^ y; x = y ^ x; }
+#define UG2_RectFromDims(r,x,y,w,h)                     { (r)->xs = x; (r)->ys = y; (r)->xe = x + w; (r)->ye = y + h; }
+#define UG2_PosFromRect(r,xs,ys,xe,ye)                  { xs = (r)->xs; ys = (r)->ys; xe = (r)->xe; ye = (r)->ye; }
 
 /* Sizing helpers */
-#define UG2_SizeToPos(xs, ys, w, h)                        xs, ys, xs+w, ys+h
-
+#define UG2_SizeToPos(xs, ys, w, h)                     xs, ys, xs+w, ys+h
 
 /* Alignments */
-#define ALIGN_H_LEFT                                  (1<<0)
-#define ALIGN_H_CENTER                                (1<<1)
-#define ALIGN_H_RIGHT                                 (1<<2)
-#define ALIGN_V_TOP                                   (1<<3)
-#define ALIGN_V_CENTER                                (1<<4)
-#define ALIGN_V_BOTTOM                                (1<<5)
-#define ALIGN_BOTTOM_RIGHT                            (ALIGN_V_BOTTOM|ALIGN_H_RIGHT)
-#define ALIGN_BOTTOM_CENTER                           (ALIGN_V_BOTTOM|ALIGN_H_CENTER)
-#define ALIGN_BOTTOM_LEFT                             (ALIGN_V_BOTTOM|ALIGN_H_LEFT)
-#define ALIGN_CENTER_RIGHT                            (ALIGN_V_CENTER|ALIGN_H_RIGHT)
-#define ALIGN_CENTER                                  (ALIGN_V_CENTER|ALIGN_H_CENTER)
-#define ALIGN_CENTER_LEFT                             (ALIGN_V_CENTER|ALIGN_H_LEFT)
-#define ALIGN_TOP_RIGHT                               (ALIGN_V_TOP|ALIGN_H_RIGHT)
-#define ALIGN_TOP_CENTER                              (ALIGN_V_TOP|ALIGN_H_CENTER)
-#define ALIGN_TOP_LEFT                                (ALIGN_V_TOP|ALIGN_H_LEFT)
+#define ALIGN_H_LEFT                                    (1<<0)
+#define ALIGN_H_CENTER                                  (1<<1)
+#define ALIGN_H_RIGHT                                   (1<<2)
+#define ALIGN_V_TOP                                     (1<<3)
+#define ALIGN_V_CENTER                                  (1<<4)
+#define ALIGN_V_BOTTOM                                  (1<<5)
+#define ALIGN_BOTTOM_RIGHT                              (ALIGN_V_BOTTOM|ALIGN_H_RIGHT)
+#define ALIGN_BOTTOM_CENTER                             (ALIGN_V_BOTTOM|ALIGN_H_CENTER)
+#define ALIGN_BOTTOM_LEFT                               (ALIGN_V_BOTTOM|ALIGN_H_LEFT)
+#define ALIGN_CENTER_RIGHT                              (ALIGN_V_CENTER|ALIGN_H_RIGHT)
+#define ALIGN_CENTER                                    (ALIGN_V_CENTER|ALIGN_H_CENTER)
+#define ALIGN_CENTER_LEFT                               (ALIGN_V_CENTER|ALIGN_H_LEFT)
+#define ALIGN_TOP_RIGHT                                 (ALIGN_V_TOP|ALIGN_H_RIGHT)
+#define ALIGN_TOP_CENTER                                (ALIGN_V_TOP|ALIGN_H_CENTER)
+#define ALIGN_TOP_LEFT                                  (ALIGN_V_TOP|ALIGN_H_LEFT)
+
+/* Color scheme indices */
+#define UG2_COLORS_ACTIVE   0
+#define UG2_COLORS_INACTIVE 1
 
 /* -------------------------------------------------------------------------------- */
 /* -- FUNCTION RESULTS                                                           -- */
 /* -------------------------------------------------------------------------------- */
+#define UG_RESULT_NO_MEM                              -4
 #define UG_RESULT_MSG_UNHANDLED                       -3
 #define UG_RESULT_ARG                                 -2
 #define UG_RESULT_FAIL                                -1
@@ -129,14 +135,34 @@ typedef struct
     UG2_POS_T ye;
 } UG2_RECT;
 
+typedef struct
+{
+    UG2_COLOR top;
+    UG2_COLOR left;
+    UG2_COLOR bottom;
+    UG2_COLOR right;
+} UG2_COLOR_RECT;
+
+typedef struct
+{
+    UG2_COLOR_RECT foreground;
+    UG2_COLOR_RECT background;
+} UG2_COLOR_RECT_FORE_BACK;
+
+typedef struct
+{
+    UG2_COLOR foreground;
+    UG2_COLOR background;
+} UG2_COLOR_FORE_BACK;
+
+
 /* Text structure */
 typedef struct
 {
     const char* str;
     UG2_FONT* font;
     UG2_RECT area;
-    UG2_COLOR color_foreground;
-    UG2_COLOR color_background;
+    UG2_COLOR_FORE_BACK colors;
     UG_U8 align;
     UG2_POS_T h_space;
     UG2_POS_T v_space;
@@ -147,10 +173,9 @@ typedef struct
 /* -------------------------------------------------------------------------------- */
 /* Message structure */
 
-
 typedef enum
 {
-    MSG_UPDATE = 0,
+    MSG_REDRAW = 0,
     MSG_INIT,
     MSG_RESIZE,
     MSG_DESTROY,
@@ -163,7 +188,9 @@ typedef enum
     MSG_SHOW,
     MSG_HIDE,
     MSG_FONT_SET,
-    MSG_FONT_GET
+    MSG_FONT_GET,
+    MSG_TITLEBAR_COLOR_SET,
+    MSG_TITLEBAR_COLOR_GET,
 } UG2_MESSAGE_TYPE;
 
 typedef struct
@@ -190,6 +217,7 @@ typedef enum
     OBJ_TYPE_CHECKBOX,
     OBJ_TYPE_PROGRESS
 } UG2_OBJECT_TYPES;
+#define UG2_OBJECT_TYPES_TYPE UG_U8
 
 typedef enum
 {
@@ -215,22 +243,25 @@ typedef UG2_RESULT (*UG2_HandleMessage)(UG2_MESSAGE*);
 struct S_OBJECT
 {
     UG_U32 style; /* see UG2_STYLE_TYPES for base style types */
+    UG2_COLOR_FORE_BACK colors;
 
-    UG2_RECT area_abs;                            /* absolute area of the object                */
-    UG2_RECT area_rel;                            /* relative area of the object                */
+    UG2_RECT rect;                            /* absolute area of the object                */
 
-    UG_U8 type;                               /* object type                                */
+    UG2_OBJECT_TYPES_TYPE type;                               /* object type                                */
     UG_U8 id;                                 /* object ID                                  */
 
     UG_U8 busy;
     UG2_OBJECT* parent;
     UG2_OBJECT* child; /* list of children, if any */
+    size_t child_cnt;
     UG2_OBJECT* focused_child; /* focused children, if any */
 
     UG2_HandleMessage handle_message;   /* pointer to object-specific update function */
+    UG2_HandleMessage user_handler;
+
 };
 
-
+#define UG2_TYPEDEF_OBJ_INHERITT      UG2_OBJECT base_object; /* this is an object after all */
 
 
 /* -------------------------------------------------------------------------------- */
@@ -259,14 +290,14 @@ typedef struct
 struct _UG2_DEVICE;
 typedef struct _UG2_DEVICE UG2_DEVICE;
 
-typedef void (*PixelSetFunc)(UG_S16, UG_S16, UG2_COLOR);
+typedef void (*PixelSetFunc)(UG2_POS_T, UG2_POS_T, const UG2_COLOR);
 typedef void (*FlushFunc)(void);
 typedef void (*PushPixelsFunc)(UG_U16, UG2_COLOR);
 typedef PushPixelsFunc(*DriverFillAreaFunct)(UG_S16, UG_S16, UG_S16, UG_S16);
 
 struct _UG2_DEVICE {
-    UG_S16 x_dim;
-    UG_S16 y_dim;
+    UG2_POS_T x_dim;
+    UG2_POS_T y_dim;
     PixelSetFunc pset;
     FlushFunc flush;
 };
@@ -284,11 +315,40 @@ typedef struct
     UG_U8 transparent_font;
     UG_S8 char_h_space;
     UG_S8 char_v_space;
-    UG2_COLOR fore_color;
-    UG2_COLOR back_color;
+    UG2_COLOR_FORE_BACK colors;
     UG2_COLOR desktop_color;
     UG_U8 state;
     UG2_DRIVER driver[NUMBER_OF_DRIVERS];
 
     void* message_pump; /* impl specific */
 } UG2_GUI;
+
+
+/* GUI accessors */
+UG2_COLOR UG2_GuiGetDesktopColor(void);
+UG2_OBJECT* UG2_GuiGetActiveWindow(void);
+void UG2_GuiSetActiveWindow(UG2_OBJECT* wnd);
+
+
+
+void UG2_FillScreen(UG2_COLOR c);
+void UG_DrawLine(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, const UG2_COLOR c);
+void UG2_Draw3DObjectFrame(UG2_POS_T xs, UG2_POS_T ys, UG2_POS_T xe, UG2_POS_T ye, const UG2_COLOR_RECT* frame_colors);
+void UG2_FillFrame(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, const UG2_COLOR c);
+
+
+void UG2_PutText(UG2_TEXT* txt);
+
+UG2_RESULT UG2_GenericObjectInitialize(
+    UG2_OBJECT* obj,
+    UG2_OBJECT* parent,
+    UG2_POS_T x,
+    UG2_POS_T y,
+    UG2_POS_T width,
+    UG2_POS_T height,
+    UG2_HandleMessage handle_message,
+    UG2_OBJECT_TYPES_TYPE type);
+
+
+UG2_RESULT UG2_SendMessage(UG2_OBJECT* obj, UG_U16 type, UG_U8 id, UG_U8 sub_id, UG_U8 event, void* data);
+UG2_RESULT UG2_Init(UG2_DEVICE* device);

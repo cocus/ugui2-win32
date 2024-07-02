@@ -39,15 +39,27 @@
     <ClInclude Include="ugui2_queue.h">
       <Filter>Archivos de origen</Filter>
     </ClInclude>
+    <ClInclude Include="ugui2_fonts.h">
+      <Filter>Archivos de origen</Filter>
+    </ClInclude>
+    <ClInclude Include="ugui2_window.h">
+      <Filter>Archivos de origen</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ugui2-win32.cpp">
+    <ClCompile Include="ugui2-win32.c">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="ugui2.c">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="ugui2_queue.c">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="font_6x8.c">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="ugui2_window.c">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
   </ItemGroup>

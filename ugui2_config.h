@@ -9,7 +9,60 @@
 /* Enable color mode */
 #define UGUI2_USE_COLOR_RGB888   // RGB = 0xFF,0xFF,0xFF
 // #define UGUI2_USE_COLOR_RGB565   // RGB = 0bRRRRRGGGGGGBBBBB
-//#define UGUI2_USE_COLOR_BW   // BW = 0x00|0xFF
+// #define UGUI2_USE_COLOR_BW   // BW = 0x00|0xFF
+
+
+#ifdef UGUI2_USE_COLOR_BW
+#define C_PAL_WINDOW                   /* Frame 0 */ \
+                                       { C_BLACK,    \
+                                         C_BLACK,    \
+                                         C_BLACK,    \
+                                         C_BLACK },  \
+                                       /* Frame 1 */ \
+                                       { C_WHITE,    \
+                                         C_WHITE,    \
+                                         C_BLACK,    \
+                                         C_BLACK },  \
+                                       /* Frame 2 */ \
+                                       { C_WHITE,    \
+                                         C_WHITE,    \
+                                         C_BLACK,    \
+                                         C_BLACK }
+
+#define C_DESKTOP_COLOR                C_WHITE
+#define C_FORE_COLOR                   C_BLACK
+#define C_BACK_COLOR                   C_WHITE
+#define C_TITLE_FORE_COLOR             C_WHITE
+#define C_TITLE_BACK_COLOR             C_BLACK
+#define C_INACTIVE_TITLE_FORE_COLOR    C_WHITE
+#define C_INACTIVE_TITLE_BACK_COLOR    C_BLACK
+#else
+#define C_PAL_WINDOW                   /* Frame 0 */   \
+                                       { C_WHITE_39,   \
+                                         C_WHITE_39,   \
+                                         C_WHITE_39,   \
+                                         C_WHITE_39 }, \
+                                       /* Frame 1 */   \
+                                       { C_WHITE_89,   \
+                                         C_WHITE_89,   \
+                                         C_WHITE_41,   \
+                                         C_WHITE_41 }, \
+                                       /* Frame 2 */   \
+                                       { C_WHITE,      \
+                                         C_WHITE,      \
+                                         C_WHITE_63,   \
+                                         C_WHITE_63 }
+#define C_DESKTOP_COLOR                C_TEAL
+#define C_FORE_COLOR                   C_BLACK
+#define C_BACK_COLOR                   0xD0D0D0
+#define C_TITLE_FORE_COLOR             C_WHITE
+#define C_TITLE_BACK_COLOR             0x1064D0
+//#define C_TITLE_BACK_COLOR             0x000080
+#define C_INACTIVE_TITLE_FORE_COLOR    C_WHITE
+#define C_INACTIVE_TITLE_BACK_COLOR    C_GRAY
+#endif
+
+
 
 /* Depress text on touch, giving additional visual feedback, but requires full button redraw  */
 #define BUTTON_TXT_DEPRESS
