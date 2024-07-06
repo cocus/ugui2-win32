@@ -41,7 +41,13 @@ static UG2_RESULT _UG2_WindowDrawTitle(UG2_WINDOW* wnd)
     if (UG2_BaseObject(wnd)->style & STYLE_BACKGROUND_MESH)
     {
         /* Draw mesh title background */
-        UG2_DrawMesh(xs, ys, xe, ys + wnd->title.height - 1, 4, txt.colors.background);
+        UG2_DrawMesh(
+            xs,
+            ys,
+            xe,
+            ys + wnd->title.height - 1,
+            4,
+            txt.colors.background);
     }
     else if (UG2_BaseObject(wnd)->style & STYLE_BACKGROUND_BLEND)
     {
@@ -50,7 +56,12 @@ static UG2_RESULT _UG2_WindowDrawTitle(UG2_WINDOW* wnd)
     else
     {
         /* Draw solid title background */
-        UG2_FillFrame(xs, ys, xe, ys + wnd->title.height - 1, txt.colors.background);
+        UG2_FillFrame(
+            xs,
+            ys,
+            xe,
+            ys + wnd->title.height - 1,
+            txt.colors.background);
     }
 
 
@@ -93,7 +104,12 @@ static UG2_RESULT _UG2_WindowHandleRedraw(UG2_WINDOW* wnd)
         /* 3D style? */
         if ((wnd->base_object.style & STYLE_3D))
         {
-            UG2_Draw3DObjectFrame(xs, ys, xe, ye, _ug2_window_default_border_theme);
+            UG2_Draw3DObjectFrame(
+                xs,
+                ys,
+                xe,
+                ye,
+                _ug2_window_default_border_theme);
             xs += 3;
             ys += 3;
             xe -= 3;
@@ -108,11 +124,22 @@ static UG2_RESULT _UG2_WindowHandleRedraw(UG2_WINDOW* wnd)
         }
 
         /* Draw window area? */
-        UG2_FillFrame(xs, ys, xe, ye, wnd->base_object.colors.background);
+        UG2_FillFrame(
+            xs,
+            ys,
+            xe,
+            ye,
+            wnd->base_object.colors.background);
     }
     else
     {
-        UG2_FillFrame(wnd->base_object.rect.xs, wnd->base_object.rect.xs, wnd->base_object.rect.xe, wnd->base_object.rect.ye, UG2_GuiGetDesktopColor());
+        /* invisible so fill it with the background color? */
+        UG2_FillFrame(
+            wnd->base_object.rect.xs,
+            wnd->base_object.rect.xs,
+            wnd->base_object.rect.xe,
+            wnd->base_object.rect.ye,
+            UG2_GuiGetDesktopColor());
     }
 
     return UG_RESULT_OK;
@@ -148,9 +175,9 @@ static UG2_RESULT _UG2_WindowHandleMessage(UG2_MESSAGE* msg)
         /* get the titlebar colors */
     case MSG_TITLEBAR_COLOR_GET:
         if (msg->id == UG2_COLORS_ACTIVE)
-            (UG2_COLOR_FORE_BACK*)msg->data = &wnd->title.colors_active;
+            *(UG2_COLOR_FORE_BACK**)msg->data = &wnd->title.colors_active;
         else if (msg->id == UG2_COLORS_INACTIVE)
-            (UG2_COLOR_FORE_BACK*)msg->data = &wnd->title.colors_inactive;
+            *(UG2_COLOR_FORE_BACK**)msg->data = &wnd->title.colors_inactive;
         else
             return UG_RESULT_ARG;
         return UG_RESULT_OK;
@@ -180,7 +207,8 @@ static UG2_RESULT _UG2_WindowHandleMessage(UG2_MESSAGE* msg)
     }
 }
 
-UG2_RESULT UG2_WindowInitialize(UG2_WINDOW* wnd,
+UG2_RESULT UG2_WindowInitialize(
+    UG2_WINDOW* wnd,
     UG2_OBJECT* parent,
     UG2_POS_T x,
     UG2_POS_T y,

@@ -2,169 +2,191 @@
 #include "ugui2.h"
 #include <stdlib.h>
 
-/* Pointer to the gui */
-//static UG2_GUI* gui;
+/* GUI object */
 static UG2_GUI _gui;
-
-
 
 /* -------------------------------------------------------------------------------- */
 /* -- INTERNAL API FUNCTIONS                                                         -- */
 /* -------------------------------------------------------------------------------- */
 
-static UG_U16 ptr_8to16(const UG_U8* p) {
+static UG_U16 ptr_8to16(const UG_U8 *p)
+{
     UG_U16 d = *p++;
     return ((d << 8) | *p);
 }
 
-
 /*
  *  Load char bitmap address into p, return the font width
  */
-static UG_S16 _UG2_GetCharData(UG2_CHAR encoding, const UG_U8** p) {
+static UG_S16 _UG2_GetCharData(UG2_CHAR encoding, const UG_U8 **p)
+{
     static UG2_CHAR last_encoding;
     static UG_S16 last_width;
-    static const UG_U8* last_p;
-    static UG2_FONT* last_font;
+    static const UG_U8 *last_p;
+    static UG2_FONT *last_font;
     UG_U16 start = 0;
     UG_U16 skip = 0;
     UG_U16 t = 0;
     UG_U8 range = 0;
     UG_U8 found = 0;
 
-    if (_gui.currentFont.font == last_font && encoding == last_encoding) {       // If called with the same arguments, return cached data
-        if (p) {
-            *p = last_p;                                                    // Load char bitmap address
+    if (_gui.currentFont.font == last_font && encoding == last_encoding)
+    { // If called with the same arguments, return cached data
+        if (p)
+        {
+            *p = last_p; // Load char bitmap address
         }
         return last_width;
     }
 
-    if (_gui.currentFont.is_old_font) {                                      // Compatibility with old fonts charset
+    if (_gui.currentFont.is_old_font)
+    { // Compatibility with old fonts charset
         switch (encoding)
         {
-        case 0xF6: encoding = 0x94; break; // ö
-        case 0xD6: encoding = 0x99; break; // Ö
-        case 0xFC: encoding = 0x81; break; // ü
-        case 0xDC: encoding = 0x9A; break; // Ü
-        case 0xE4: encoding = 0x84; break; // ä
-        case 0xC4: encoding = 0x8E; break; // Ä
-        case 0xB5: encoding = 0xE6; break; // µ
-        case 0xB0: encoding = 0xF8; break; // °
+        case 0xF6:
+            encoding = 0x94;
+            break; // ï¿½
+        case 0xD6:
+            encoding = 0x99;
+            break; // ï¿½
+        case 0xFC:
+            encoding = 0x81;
+            break; // ï¿½
+        case 0xDC:
+            encoding = 0x9A;
+            break; // ï¿½
+        case 0xE4:
+            encoding = 0x84;
+            break; // ï¿½
+        case 0xC4:
+            encoding = 0x8E;
+            break; // ï¿½
+        case 0xB5:
+            encoding = 0xE6;
+            break; // ï¿½
+        case 0xB0:
+            encoding = 0xF8;
+            break; // ï¿½
         }
     }
 
     if (_gui.currentFont.font_type == FONT_TYPE_LIC_1BPP)
     {
-        UG_FONT_LIC* lic_font = (UG_FONT_LIC*)_gui.currentFont.font;
+        UG_FONT_LIC *lic_font = (UG_FONT_LIC *)_gui.currentFont.font;
 
-        if (encoding < lic_font->first_char || encoding > lic_font->last_char) {
+        if (encoding < lic_font->first_char || encoding > lic_font->last_char)
+        {
             return -1;
         }
 
         for (t = 0; t < lic_font->num_of_chars; t++)
         {
             if (lic_font->info[t].code == encoding)
-            { // symbol found
-                last_font = _gui.currentFont.font;                // Update cached data
+            {                                      // symbol found
+                last_font = _gui.currentFont.font; // Update cached data
                 last_encoding = encoding;
                 last_width = lic_font->info[t].width;
                 last_p = lic_font->info[t].data;
-                if (p) {
-                    *p = last_p;                                       // Load char bitmap address
+                if (p)
+                {
+                    *p = last_p; // Load char bitmap address
                 }
-                return(last_width);                                // Return char width
+                return (last_width); // Return char width
             }
         }
-        return -1;                                             // -1 = char not found
+        return -1; // -1 = char not found
     }
 
-    for (; t < _gui.currentFont.number_of_offsets; t++)                         // Seek through the offsets
+    for (; t < _gui.currentFont.number_of_offsets; t++) // Seek through the offsets
     {
-        UG_U16 curr_offset = ptr_8to16(_gui.currentFont.offsets + (t * 2));    // Offsets are 16-bit, splitted in 2 byte values
+        UG_U16 curr_offset = ptr_8to16(_gui.currentFont.offsets + (t * 2)); // Offsets are 16-bit, splitted in 2 byte values
 
-        if (curr_offset & 0x8000)                                          // If the offset has the MSB bit set, it means it's the a range start
+        if (curr_offset & 0x8000) // If the offset has the MSB bit set, it means it's the a range start
         {
-            start = curr_offset & 0x7FFF;                                     // Store range start
-            range = 1;                                                      // Set flag
+            start = curr_offset & 0x7FFF; // Store range start
+            range = 1;                    // Set flag
         }
-        else if (range)                                                  // If range previously set, this is the range end
+        else if (range) // If range previously set, this is the range end
         {
-            if (encoding >= start && encoding <= curr_offset)            // If the encoding is between the range
+            if (encoding >= start && encoding <= curr_offset) // If the encoding is between the range
             {
-                skip += (encoding - start);                             // Calculate the skip value
+                skip += (encoding - start); // Calculate the skip value
                 found = 1;
                 break;
             }
-            else if (encoding < start)                                 // If the encoding is lower than current range start, the char is not in the font
+            else if (encoding < start) // If the encoding is lower than current range start, the char is not in the font
                 break;
 
-            skip += ((curr_offset - start) + 1);                        // Encoding not found in the current range, increase skip size and clear range flasg
+            skip += ((curr_offset - start) + 1); // Encoding not found in the current range, increase skip size and clear range flasg
             range = 0;
         }
-        else                                                            // Range not set, this is a single char offset
+        else // Range not set, this is a single char offset
         {
-            if (encoding == curr_offset)                                     // If matching the current offset char
+            if (encoding == curr_offset) // If matching the current offset char
             {
                 found = 1;
                 break;
             }
-            else if (encoding < curr_offset)                                // If the encoding is lower than current range, the char is not in the font
+            else if (encoding < curr_offset) // If the encoding is lower than current range, the char is not in the font
             {
                 break;
             }
-            skip++;                                                       // Else, increase skip and keep searching
+            skip++; // Else, increase skip and keep searching
         }
     }
 
-    if (found)                                                         // If char found
+    if (found) // If char found
     {
-        last_font = _gui.currentFont.font;                                     // Update cached data
+        last_font = _gui.currentFont.font; // Update cached data
         last_encoding = encoding;
         last_p = (_gui.currentFont.data + (skip * _gui.currentFont.bytes_per_char));
-        if (_gui.currentFont.widths) {                                                // If width table available
-            last_width = *(_gui.currentFont.widths + skip);                        // Use width from table
+        if (_gui.currentFont.widths)
+        {                                                   // If width table available
+            last_width = *(_gui.currentFont.widths + skip); // Use width from table
         }
-        else {
-            last_width = _gui.currentFont.char_width;                            // Else use width from char width
+        else
+        {
+            last_width = _gui.currentFont.char_width; // Else use width from char width
         }
 
-
-        if (p) {
-            *p = last_p;                                                    // Load char bitmap address
+        if (p)
+        {
+            *p = last_p; // Load char bitmap address
         }
-        return(last_width);                                             // Return char width
+        return (last_width); // Return char width
     }
-    return -1;                                                        // -1 = char not found
+    return -1; // -1 = char not found
 }
-
 
 static UG_S16 _UG2_PutChar(UG2_CHAR chr, UG_S16 x, UG_S16 y, UG2_COLOR fc, UG2_COLOR bc)
 {
     UG2_POS_T x0 = 0, y0 = 0, i, j, k, bn, fpixels = 0, bpixels = 0;
     UG_S16 c;
-    UG2_POS_T xd, yd;                                   /* printed char width, hight */
+    UG2_POS_T xd, yd; /* printed char width, hight */
     UG_U32 cnt = 0;
     UG_U8 pix, old_code;
     UG_U8 b, trans = _gui.transparent_font, driver = (_gui.driver[DRIVER_FILL_AREA].state & DRIVER_ENABLED);
-    const UG_U8* data;                              // Pointer to current char bitmap
+    const UG_U8 *data; // Pointer to current char bitmap
 #if defined(UGUI_USE_COLOR_RGB888) || defined(UGUI_USE_COLOR_RGB565)
     UG2_COLOR color;
 #endif
     PushPixelsFunc push_pixels = NULL;
 
     if ((x > _gui.device->x_dim - 1) || (y > _gui.device->y_dim - 1))
-        return -1;                                   /* outside area */
+        return -1; /* outside area */
 
     UG_S16 actual_char_width = _UG2_GetCharData(chr, &data);
     if (actual_char_width == -1)
-        return -1;                                     // Char not presnt in the font
+        return -1; // Char not presnt in the font
 
     bn = _gui.currentFont.char_width;
-    if (!bn) {
+    if (!bn)
+    {
         return 0;
     }
     bn >>= 3;
-    if (_gui.currentFont.char_width % 8) bn++;
+    if (_gui.currentFont.char_width % 8)
+        bn++;
 
     /* The case when the symbol goes beyond the screen */
     xd = actual_char_width;
@@ -193,7 +215,8 @@ static UG_S16 _UG2_PutChar(UG2_CHAR chr, UG_S16 x, UG_S16 y, UG2_COLOR fc, UG2_C
                     b = *data++;
                 for (k = 0; old_code ? ((k < 8) && c < xd) : (k < actual_char_width); k++)
                 {
-                    if (!old_code) {
+                    if (!old_code)
+                    {
                         if (!(cnt++ % 8))
                             b = *data++;
                         pix = b & 0x80;
@@ -201,54 +224,56 @@ static UG_S16 _UG2_PutChar(UG2_CHAR chr, UG_S16 x, UG_S16 y, UG2_COLOR fc, UG2_C
                         if (c >= xd)
                             continue;
                     }
-                    else {
+                    else
+                    {
                         pix = b & 0x01;
                         b >>= 1;
                     }
 
-                    if (pix)                         // Foreground pixel detected
+                    if (pix) // Foreground pixel detected
                     {
                         if (driver)
-                        {                              // Accelerated output
-                            if (bpixels && !trans)        // Draw accumulated background pixels, only if transparent mode disabled
+                        {                          // Accelerated output
+                            if (bpixels && !trans) // Draw accumulated background pixels, only if transparent mode disabled
                             {
-                                push_pixels(bpixels, bc);   // Drawing accumulated pixels removes a lot of overhead, drawing speed is at least 3x faster
+                                push_pixels(bpixels, bc); // Drawing accumulated pixels removes a lot of overhead, drawing speed is at least 3x faster
                                 bpixels = 0;
                             }
-                            if (!fpixels && trans)        // Store first foreground pixel position for transparent drawing
+                            if (!fpixels && trans) // Store first foreground pixel position for transparent drawing
                             {
                                 x0 = x + c;
                                 y0 = y + j;
                             }
-                            fpixels++;                   // Instead writing every pixel, count consecutive pixels, then send accumulated pixels in a single transaction
+                            fpixels++; // Instead writing every pixel, count consecutive pixels, then send accumulated pixels in a single transaction
                         }
                         else
-                        {                              // Not accelerated output
+                        { // Not accelerated output
                             _gui.device->pset(x + c, y + j, fc);
                         }
                     }
-                    else                             // Background pixel detected
+                    else // Background pixel detected
                     {
                         if (driver)
-                        {                              // Accelerated output
-                            if (fpixels)                  // Draw accumulated foreground pixels
+                        {                // Accelerated output
+                            if (fpixels) // Draw accumulated foreground pixels
                             {
-                                if (!trans)                 // In transparent mode, we don't need to address pixel areas, so just keep pushing pixels
+                                if (!trans) // In transparent mode, we don't need to address pixel areas, so just keep pushing pixels
                                 {
                                     push_pixels(fpixels, fc);
                                     fpixels = 0;
                                 }
-                                else {                                // In transparent mode, drawing needs to be broken in smaller parts, avoiding the background areas
+                                else
+                                { // In transparent mode, drawing needs to be broken in smaller parts, avoiding the background areas
                                     while (fpixels)
                                     {
-                                        UG_U16 width = (x + xd) - x0;         // Detect available pixels in the current row from current x position
-                                        if (x0 == x || fpixels < width)                       // If pixel draw count is lower than available pixels, or drawing at start of the row, drawn as-is
+                                        UG_U16 width = (x + xd) - x0;   // Detect available pixels in the current row from current x position
+                                        if (x0 == x || fpixels < width) // If pixel draw count is lower than available pixels, or drawing at start of the row, drawn as-is
                                         {
                                             push_pixels = ((DriverFillAreaFunct)_gui.driver[DRIVER_FILL_AREA].driver)(x0, y0, x0 + width - 1, y0 + (fpixels / actual_char_width));
                                             push_pixels(fpixels, fc);
                                             fpixels = 0;
                                         }
-                                        else                                             // If  pixel draw count is higher than available pixels, there's at least second line, drawn this row first
+                                        else // If  pixel draw count is higher than available pixels, there's at least second line, drawn this row first
                                         {
                                             push_pixels = ((DriverFillAreaFunct)_gui.driver[DRIVER_FILL_AREA].driver)(x0, y0, x0 + width - 1, y0);
                                             push_pixels(fpixels, fc);
@@ -261,7 +286,7 @@ static UG_S16 _UG2_PutChar(UG2_CHAR chr, UG_S16 x, UG_S16 y, UG2_COLOR fc, UG2_C
                             }
                             bpixels++;
                         }
-                        else if (!trans)                           // Not accelerated output
+                        else if (!trans) // Not accelerated output
                         {
                             _gui.device->pset(x + c, y + j, bc);
                         }
@@ -272,7 +297,8 @@ static UG_S16 _UG2_PutChar(UG2_CHAR chr, UG_S16 x, UG_S16 y, UG2_COLOR fc, UG2_C
                     break;
             }
         }
-        if (driver) {                                            // After finishing, ensure there're no remaining pixels left, make another pass
+        if (driver)
+        { // After finishing, ensure there're no remaining pixels left, make another pass
             if (bpixels && !trans)
             {
                 push_pixels(bpixels, bc);
@@ -317,16 +343,16 @@ static UG_S16 _UG2_PutChar(UG2_CHAR chr, UG_S16 x, UG_S16 y, UG2_COLOR fc, UG2_C
                 b = *data++;
                 if (j < yd && i < xd)
                 {
-                    color = ((((fc & 0xFF) * b + (bc & 0xFF) * (256 - b)) >> 8) & 0xFF) |            //Blue component
-                        ((((fc & 0xFF00) * b + (bc & 0xFF00) * (256 - b)) >> 8) & 0xFF00) |     //Green component
-                        ((((fc & 0xFF0000) * b + (bc & 0xFF0000) * (256 - b)) >> 8) & 0xFF0000); //Red component
+                    color = ((((fc & 0xFF) * b + (bc & 0xFF) * (256 - b)) >> 8) & 0xFF) |            // Blue component
+                            ((((fc & 0xFF00) * b + (bc & 0xFF00) * (256 - b)) >> 8) & 0xFF00) |      // Green component
+                            ((((fc & 0xFF0000) * b + (bc & 0xFF0000) * (256 - b)) >> 8) & 0xFF0000); // Red component
                     if (driver)
                     {
-                        push_pixels(1, color);                                                          // Accelerated output
+                        push_pixels(1, color); // Accelerated output
                     }
                     else
                     {
-                        _gui.device->pset(x + i, y + j, color);                                                // Not accelerated output
+                        _gui.device->pset(x + i, y + j, color); // Not accelerated output
                     }
                 }
             }
@@ -337,18 +363,18 @@ static UG_S16 _UG2_PutChar(UG2_CHAR chr, UG_S16 x, UG_S16 y, UG2_COLOR fc, UG2_C
     return (actual_char_width);
 }
 
-
 /*
  * Updates the current font data
  */
-static void _UG2_FontSelect(UG2_FONT* font) {
+static void _UG2_FontSelect(UG2_FONT *font)
+{
     if (_gui.currentFont.font == font)
         return;
-    _gui.currentFont.font = font;                          // Save Font pointer
-    _gui.currentFont.font_type = (FONT_TYPE)(0x7F & *font);// Byte    0: Font_type
+    _gui.currentFont.font = font;                           // Save Font pointer
+    _gui.currentFont.font_type = (FONT_TYPE)(0x7F & *font); // Byte    0: Font_type
     if (_gui.currentFont.font_type == FONT_TYPE_LIC_1BPP)
     {
-        UG_FONT_LIC* lic_font = (UG_FONT_LIC*)font;
+        UG_FONT_LIC *lic_font = (UG_FONT_LIC *)font;
 
         _gui.currentFont.is_old_font = 0;
         _gui.currentFont.char_width = lic_font->char_width;
@@ -358,33 +384,36 @@ static void _UG2_FontSelect(UG2_FONT* font) {
         _gui.currentFont.bytes_per_char = 0;
         _gui.currentFont.widths = NULL;
         _gui.currentFont.offsets = NULL;
-        _gui.currentFont.data = (const UG_U8*)lic_font->info;
+        _gui.currentFont.data = (const UG_U8 *)lic_font->info;
         return;
     }
-    _gui.currentFont.is_old_font = (0x80 & *font++) && 1;    // Byte    0: Bit 7 indicates old or new font type. 1=old font, 0=new font
-    _gui.currentFont.char_width = *font++;                 // Byte    1: Char width
-    _gui.currentFont.char_height = *font++;                // Byte    2: Char height
-    _gui.currentFont.number_of_chars = ptr_8to16(font);    // Bytes 3+4: Number of chars
+    _gui.currentFont.is_old_font = (0x80 & *font++) && 1; // Byte    0: Bit 7 indicates old or new font type. 1=old font, 0=new font
+    _gui.currentFont.char_width = *font++;                // Byte    1: Char width
+    _gui.currentFont.char_height = *font++;               // Byte    2: Char height
+    _gui.currentFont.number_of_chars = ptr_8to16(font);   // Bytes 3+4: Number of chars
     font += 2;
-    _gui.currentFont.number_of_offsets = ptr_8to16(font);  // Bytes 5+6: Number of offsets
+    _gui.currentFont.number_of_offsets = ptr_8to16(font); // Bytes 5+6: Number of offsets
     font += 2;
-    _gui.currentFont.bytes_per_char = ptr_8to16(font);     // Bytes 7+8: Bytes per char
+    _gui.currentFont.bytes_per_char = ptr_8to16(font); // Bytes 7+8: Bytes per char
     font += 2;
-    if (*font++) {                                    // Byte 9: 1=Width table present, 0=not present
-        _gui.currentFont.widths = font;                      // Save pointer to width table
-        font += _gui.currentFont.number_of_chars;              // Increase number of chars
+    if (*font++)
+    {                                             // Byte 9: 1=Width table present, 0=not present
+        _gui.currentFont.widths = font;           // Save pointer to width table
+        font += _gui.currentFont.number_of_chars; // Increase number of chars
     }
-    else {
-        _gui.currentFont.widths = NULL;                      // No width table
+    else
+    {
+        _gui.currentFont.widths = NULL; // No width table
     }
-    _gui.currentFont.offsets = font;                       // Save pointer to offset table
-    font += (_gui.currentFont.number_of_offsets * 2);        // Increase pointer by number of offsets*2 (2-byte values)
-    _gui.currentFont.data = font;                          // Save pointer to bitmap data
+    _gui.currentFont.offsets = font;                  // Save pointer to offset table
+    font += (_gui.currentFont.number_of_offsets * 2); // Increase pointer by number of offsets*2 (2-byte values)
+    _gui.currentFont.data = font;                     // Save pointer to bitmap data
 }
 
-void UG2_PutText(UG2_TEXT* txt)
+void UG2_PutText(UG2_TEXT *txt)
 {
-    if (!txt->font || !txt->str) {
+    if (!txt->font || !txt->str)
+    {
         return;
     }
 
@@ -392,7 +421,8 @@ void UG2_PutText(UG2_TEXT* txt)
     UG2_POS_T ys = txt->area.ys;
     UG2_POS_T char_height = UG2_GetFontHeight(txt->font);
 
-    if ((ye - ys) < char_height) {
+    if ((ye - ys) < char_height)
+    {
         return;
     }
 
@@ -400,13 +430,13 @@ void UG2_PutText(UG2_TEXT* txt)
     UG2_POS_T xp, yp;
     UG2_POS_T xs = txt->area.xs;
     UG2_POS_T xe = txt->area.xe;
-    UG_U8  align = txt->align;
+    UG_U8 align = txt->align;
     UG2_POS_T char_h_space = txt->h_space;
     UG2_POS_T char_v_space = txt->v_space;
     UG2_POS_T w;
     UG2_CHAR chr;
-    const char* str = txt->str;
-    const char* c = str;
+    const char *str = txt->str;
+    const char *c = str;
 
     _UG2_FontSelect(txt->font);
 
@@ -416,17 +446,21 @@ void UG2_PutText(UG2_TEXT* txt)
     while (1)
     {
 #ifdef UGUI_USE_UTF8
-        if (!_gui.currentFont.is_old_font) {                // Old font charset compatibility
+        if (!_gui.currentFont.is_old_font)
+        { // Old font charset compatibility
             chr = _UG_DecodeUTF8(&c);
         }
-        else {
+        else
+        {
             chr = *c++;
         }
 #else
         chr = *c++;
 #endif
-        if (!chr) break;
-        if (chr == '\n') rc++;
+        if (!chr)
+            break;
+        if (chr == '\n')
+            rc++;
     }
 
     yp = 0;
@@ -435,11 +469,13 @@ void UG2_PutText(UG2_TEXT* txt)
         yp = ye - ys + 1;
         yp -= char_height * rc;
         yp -= char_v_space * (rc - 1);
-        if (yp < 0) {
+        if (yp < 0)
+        {
             return;
         }
     }
-    if (align & ALIGN_V_CENTER) yp >>= 1;
+    if (align & ALIGN_V_CENTER)
+        yp >>= 1;
     yp += ys;
 
     while (1)
@@ -450,20 +486,26 @@ void UG2_PutText(UG2_TEXT* txt)
         while (1)
         {
 #ifdef UGUI_USE_UTF8
-            if (!_gui.currentFont.is_old_font) {                // Old font charset compatibility
+            if (!_gui.currentFont.is_old_font)
+            { // Old font charset compatibility
                 chr = _UG_DecodeUTF8(&c);
             }
-            else {
+            else
+            {
                 chr = *c++;
             }
 #else
             chr = *c++;
 #endif
-            if (chr == 0 || chr == '\n') {
+            if (chr == 0 || chr == '\n')
+            {
                 break;
             }
             w = _UG2_GetCharData(chr, NULL);
-            if (w == -1) { continue; }
+            if (w == -1)
+            {
+                continue;
+            }
             sl++;
             wl += w + char_h_space;
         }
@@ -471,28 +513,35 @@ void UG2_PutText(UG2_TEXT* txt)
 
         xp = xe - xs + 1;
         xp -= wl;
-        if (xp < 0) break;
+        if (xp < 0)
+            break;
 
-        if (align & ALIGN_H_LEFT) xp = 0;
-        else if (align & ALIGN_H_CENTER) xp >>= 1;
+        if (align & ALIGN_H_LEFT)
+            xp = 0;
+        else if (align & ALIGN_H_CENTER)
+            xp >>= 1;
         xp += xs;
 
-
-        while (1) {
+        while (1)
+        {
 #ifdef UGUI_USE_UTF8
-            if (!_gui.currentFont.is_old_font) {                // Old font charset compatibility
+            if (!_gui.currentFont.is_old_font)
+            { // Old font charset compatibility
                 chr = _UG_DecodeUTF8(&str);
             }
-            else {
+            else
+            {
                 chr = *str++;
             }
 #else
             chr = *str++;
 #endif
-            if (chr == 0) {
+            if (chr == 0)
+            {
                 return;
             }
-            else if (chr == '\n') {
+            else if (chr == '\n')
+            {
                 break;
             }
             w = _UG2_PutChar(chr, xp, yp, txt->colors.foreground, txt->colors.background);
@@ -503,23 +552,20 @@ void UG2_PutText(UG2_TEXT* txt)
     }
 }
 
-
-
 UG2_COLOR UG2_GuiGetDesktopColor(void)
 {
     return _gui.desktop_color;
 }
 
-UG2_OBJECT* UG2_GuiGetActiveWindow(void)
+UG2_OBJECT *UG2_GuiGetActiveWindow(void)
 {
     return _gui.active_window;
 }
 
-void UG2_GuiSetActiveWindow(UG2_OBJECT* wnd)
+void UG2_GuiSetActiveWindow(UG2_OBJECT *wnd)
 {
     _gui.active_window = wnd;
 }
-
 
 void UG2_FillFrame(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, const UG2_COLOR c)
 {
@@ -533,7 +579,7 @@ void UG2_FillFrame(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, const
     /* Is hardware acceleration available? */
     if (_gui.driver[DRIVER_FILL_FRAME].state & DRIVER_ENABLED)
     {
-        //if (((UG2_RESULT(*)(UG_S16 x1, UG_S16 y1, UG_S16 x2, UG_S16 y2, UG_COLOR c))_gui.driver[DRIVER_FILL_FRAME].driver)(x1, y1, x2, y2, c) == UG_RESULT_OK) return;
+        // if (((UG2_RESULT(*)(UG_S16 x1, UG_S16 y1, UG_S16 x2, UG_S16 y2, UG_COLOR c))_gui.driver[DRIVER_FILL_FRAME].driver)(x1, y1, x2, y2, c) == UG_RESULT_OK) return;
     }
 
     for (m = y1; m <= y2; m++)
@@ -550,7 +596,6 @@ void UG2_FillScreen(UG2_COLOR c)
     UG2_FillFrame(0, 0, _gui.device->x_dim - 1, _gui.device->y_dim - 1, c);
 }
 
-
 void UG_DrawLine(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, const UG2_COLOR c)
 {
     UG2_POS_T n, dx, dy, sgndx, sgndy, dxabs, dyabs, x, y, drawx, drawy;
@@ -558,7 +603,7 @@ void UG_DrawLine(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, const U
     /* Is hardware acceleration available? */
     if (_gui.driver[DRIVER_DRAW_LINE].state & DRIVER_ENABLED)
     {
-        //if (((UG_RESULT(*)(UG_S16 x1, UG_S16 y1, UG_S16 x2, UG_S16 y2, UG_COLOR c))_gui.driver[DRIVER_DRAW_LINE].driver)(x1, y1, x2, y2, c) == UG_RESULT_OK) return;
+        // if (((UG_RESULT(*)(UG_S16 x1, UG_S16 y1, UG_S16 x2, UG_S16 y2, UG_COLOR c))_gui.driver[DRIVER_DRAW_LINE].driver)(x1, y1, x2, y2, c) == UG_RESULT_OK) return;
     }
 
     dx = x2 - x1;
@@ -604,7 +649,8 @@ void UG_DrawLine(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, const U
     }
 }
 
-void UG2_Draw3DObjectFrame(UG2_POS_T xs, UG2_POS_T ys, UG2_POS_T xe, UG2_POS_T ye, const UG2_COLOR_RECT* frame_colors)
+void UG2_Draw3DObjectFrame(
+    UG2_POS_T xs, UG2_POS_T ys, UG2_POS_T xe, UG2_POS_T ye, const UG2_COLOR_RECT *frame_colors)
 {
     // Frame 0
     UG_DrawLine(xs, ys, xe - 1, ys, frame_colors[0].top);
@@ -623,8 +669,8 @@ void UG2_Draw3DObjectFrame(UG2_POS_T xs, UG2_POS_T ys, UG2_POS_T xe, UG2_POS_T y
     UG_DrawLine(xe - 2, ys + 2, xe - 2, ye - 3, frame_colors[2].right);
 }
 
-
-void UG2_DrawMesh(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, UG2_POS_T spacing, UG2_COLOR c)
+void UG2_DrawMesh(
+    UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, UG2_POS_T spacing, UG2_COLOR c)
 {
     UG2_POS_T p;
 
@@ -646,7 +692,8 @@ void UG2_DrawMesh(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, UG2_PO
     UG_DrawLine(x2, y1, x2, y2, c);
 }
 
-void UG2_DrawFrame(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, const UG2_COLOR c)
+void UG2_DrawFrame(
+    UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, const UG2_COLOR c)
 {
     UG_DrawLine(x1, y1, x2, y1, c);
     UG_DrawLine(x1, y2, x2, y2, c);
@@ -654,7 +701,9 @@ void UG2_DrawFrame(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, const
     UG_DrawLine(x2, y1, x2, y2, c);
 }
 
-static void drawDottedLine(UG2_POS_T x0, UG2_POS_T y0, UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T dotLength, UG2_POS_T spaceLength, const UG2_COLOR c) {
+static void drawDottedLine(
+    UG2_POS_T x0, UG2_POS_T y0, UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T dotLength, UG2_POS_T spaceLength, const UG2_COLOR c)
+{
     int dx = abs(x1 - x0);
     int dy = abs(y1 - y0);
     int sx = (x0 < x1) ? 1 : -1;
@@ -663,31 +712,38 @@ static void drawDottedLine(UG2_POS_T x0, UG2_POS_T y0, UG2_POS_T x1, UG2_POS_T y
     int dotCount = 0;
     int drawDot = 1;
 
-    while (1) {
-        if (drawDot) {
+    while (1)
+    {
+        if (drawDot)
+        {
             _gui.device->pset(x0, y0, c);
         }
         dotCount++;
 
-        if (dotCount == dotLength) {
+        if (dotCount == dotLength)
+        {
             dotCount = 0;
             drawDot = !drawDot;
         }
 
-        if (x0 == x1 && y0 == y1) break;
+        if (x0 == x1 && y0 == y1)
+            break;
         int e2 = 2 * err;
-        if (e2 > -dy) {
+        if (e2 > -dy)
+        {
             err -= dy;
             x0 += sx;
         }
-        if (e2 < dx) {
+        if (e2 < dx)
+        {
             err += dx;
             y0 += sy;
         }
     }
 }
 
-void UG2_DrawDottedFrame(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, UG2_POS_T spacing, const UG2_COLOR c)
+void UG2_DrawDottedFrame(
+    UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, UG2_POS_T spacing, const UG2_COLOR c)
 {
     drawDottedLine(x1, y1, x2, y1, spacing, 1, c);
     drawDottedLine(x1, y2, x2, y2, spacing, 1, c);
@@ -695,13 +751,9 @@ void UG2_DrawDottedFrame(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2,
     drawDottedLine(x2, y1, x2, y2, spacing, 1, c);
 }
 
-
-
-
-
 UG2_RESULT UG2_GenericObjectInitialize(
-    UG2_OBJECT* obj,
-    UG2_OBJECT* parent,
+    UG2_OBJECT *obj,
+    UG2_OBJECT *parent,
     UG2_POS_T x,
     UG2_POS_T y,
     UG2_POS_T width,
@@ -709,7 +761,8 @@ UG2_RESULT UG2_GenericObjectInitialize(
     UG2_HandleMessage handle_message,
     UG2_OBJECT_TYPES_TYPE type)
 {
-    if (obj == NULL) return UG_RESULT_ARG;
+    if (obj == NULL)
+        return UG_RESULT_ARG;
 
     obj->user_handler = NULL;
 
@@ -747,40 +800,40 @@ UG2_RESULT UG2_GenericObjectInitialize(
     return UG_RESULT_OK;
 }
 
+UG2_RESULT UG2_ObjectSetForeColor(UG2_OBJECT *obj, const UG2_COLOR c)
+{
+    return UG2_SendMessage(obj, MSG_COLOR_FORE_SET, 0, 0, 0, (void *)c);
+}
+UG2_RESULT UG2_ObjectGetForeColor(UG2_OBJECT *obj, UG2_COLOR *c)
+{
+    return UG2_SendMessage(obj, MSG_COLOR_FORE_GET, 0, 0, 0, (void *)c);
+}
+UG2_RESULT UG2_ObjectSetBackColor(UG2_OBJECT *obj, const UG2_COLOR c)
+{
+    return UG2_SendMessage(obj, MSG_COLOR_BACK_SET, 0, 0, 0, (void *)c);
+}
+UG2_RESULT UG2_ObjectGetBackColor(UG2_OBJECT *obj, UG2_COLOR *c)
+{
+    return UG2_SendMessage(obj, MSG_COLOR_BACK_GET, 0, 0, 0, (void *)c);
+}
+UG2_RESULT UG2_ObjectSetText(UG2_OBJECT *obj, const char *str)
+{
+    return UG2_SendMessage(obj, MSG_TEXT_SET, 0, 0, 0, (void *)str);
+}
+UG2_RESULT UG2_ObjectSetTextAlign(UG2_OBJECT *obj, const UG_U8 align)
+{
+    return UG2_SendMessage(obj, MSG_TEXT_ALIGN_SET, 0, 0, 0, (void *)align);
+}
+UG2_RESULT UG2_ObjectSetFont(UG2_OBJECT *obj, UG2_FONT *font)
+{
+    return UG2_SendMessage(obj, MSG_FONT_SET, 0, 0, 0, (void *)font);
+}
 
-UG2_RESULT UG2_ObjectSetForeColor(UG2_OBJECT* obj, const UG2_COLOR c)
+UG2_RESULT UG2_SetParent(UG2_OBJECT *new_parent, UG2_OBJECT *obj)
 {
-    return UG2_SendMessage(obj, MSG_COLOR_FORE_SET, 0, 0, 0, (void*)c);
-}
-UG2_RESULT UG2_ObjectGetForeColor(UG2_OBJECT* obj, UG2_COLOR* c)
-{
-    return UG2_SendMessage(obj, MSG_COLOR_FORE_GET, 0, 0, 0, (void*)c);
-}
-UG2_RESULT UG2_ObjectSetBackColor(UG2_OBJECT* obj, const UG2_COLOR c)
-{
-    return UG2_SendMessage(obj, MSG_COLOR_BACK_SET, 0, 0, 0, (void*)c);
-}
-UG2_RESULT UG2_ObjectGetBackColor(UG2_OBJECT* obj, UG2_COLOR* c)
-{
-    return UG2_SendMessage(obj, MSG_COLOR_BACK_GET, 0, 0, 0, (void*)c);
-}
-UG2_RESULT UG2_ObjectSetText(UG2_OBJECT* obj, const char* str)
-{
-    return UG2_SendMessage(obj, MSG_TEXT_SET, 0, 0, 0, (void*)str);
-}
-UG2_RESULT UG2_ObjectSetTextAlign(UG2_OBJECT* obj, const UG_U8 align)
-{
-    return UG2_SendMessage(obj, MSG_TEXT_ALIGN_SET, 0, 0, 0, align);
-}
-UG2_RESULT UG2_ObjectSetFont(UG2_OBJECT* obj, UG2_FONT* font)
-{
-    return UG2_SendMessage(obj, MSG_FONT_SET, 0, 0, 0, (void*)font);
-}
-
-UG2_RESULT UG2_SetParent(UG2_OBJECT* new_parent, UG2_OBJECT* obj)
-{
-    UG2_OBJECT* o = NULL;
-    if (obj == NULL) return UG_RESULT_ARG;
+    UG2_OBJECT *o = NULL;
+    if (obj == NULL)
+        return UG_RESULT_ARG;
 
     if (obj->parent)
     {
@@ -798,7 +851,7 @@ UG2_RESULT UG2_SetParent(UG2_OBJECT* new_parent, UG2_OBJECT* obj)
     }
 
 setnew:
-    
+
     /* this object is already a child of another object */
     if (new_parent->child)
     {
@@ -817,33 +870,32 @@ setnew:
         new_parent->child = obj;
     }
 
- setpar:
+setpar:
     obj->next = NULL; /* just in case */
     obj->parent = new_parent;
-
 
     return UG_RESULT_OK;
 }
 
-UG2_RESULT UG2_GetObjectScreenRect(UG2_OBJECT* obj, UG2_RECT* rect)
+UG2_RESULT UG2_GetObjectScreenRect(UG2_OBJECT *obj, UG2_RECT *rect)
 {
-    UG2_RECT screen = { 0, 0, 0, 0 };
-    UG2_RECT r = { 0, 0, 0, 0 };
-    UG2_OBJECT* parent = NULL;
+    UG2_RECT r = {0, 0, 0, 0};
+    UG2_OBJECT *parent = NULL;
     UG2_RESULT res;
 
-    if (!obj || !rect) return UG_RESULT_ARG;
+    if (!obj || !rect)
+        return UG_RESULT_ARG;
 
     UG2_RectFromDims(
         rect,
         0, 0, 0, 0);
 
     /* get current obj client rect */
-    res = UG2_SendMessage(obj, MSG_CLIENTRECT, 0, 0, 0, (void*)rect);
+    res = UG2_SendMessage(obj, MSG_CLIENTRECT, 0, 0, 0, (void *)rect);
 
     for (parent = obj->parent; parent != NULL; parent = parent->parent)
     {
-        res = UG2_SendMessage(parent, MSG_CLIENTRECT, 0, 0, 0, (void*)&r);
+        res = UG2_SendMessage(parent, MSG_CLIENTRECT, 0, 0, 0, (void *)&r);
 
         rect->xs += r.xs;
         rect->ys += r.ys;
@@ -852,23 +904,25 @@ UG2_RESULT UG2_GetObjectScreenRect(UG2_OBJECT* obj, UG2_RECT* rect)
         rect->ye += r.ys;
     }
 
-    return UG_RESULT_OK;
+    return res;
 }
 
-static UG2_RESULT _UG2_DefaultHandleMessage(UG2_MESSAGE* msg)
+static UG2_RESULT _UG2_DefaultHandleMessage(UG2_MESSAGE *msg)
 {
-    if (!msg || !msg->obj) return UG_RESULT_ARG;
+    if (!msg || !msg->obj)
+        return UG_RESULT_ARG;
 
-    UG2_OBJECT* obj = NULL;
+    UG2_OBJECT *obj = NULL;
 
     switch (msg->type)
     {
         /* get the client rect inside the parent */
     case MSG_CLIENTRECT:
-        if (msg->data == NULL) return UG_RESULT_ARG;
+        if (msg->data == NULL)
+            return UG_RESULT_ARG;
         msg->obj->busy = 1;
         /* default client rect */
-        *((UG2_RECT*)msg->data) = msg->obj->rect;
+        *((UG2_RECT *)msg->data) = msg->obj->rect;
         msg->obj->busy = 0;
         return UG_RESULT_OK;
 
@@ -882,49 +936,51 @@ static UG2_RESULT _UG2_DefaultHandleMessage(UG2_MESSAGE* msg)
 
         /* get text align */
     case MSG_TEXT_ALIGN_GET:
-        if (msg->data == NULL) return UG_RESULT_ARG;
+        if (msg->data == NULL)
+            return UG_RESULT_ARG;
         msg->obj->busy = 1;
-        *((UG_U8*)msg->data) = msg->obj->text_align;
+        *((UG_U8 *)msg->data) = msg->obj->text_align;
         msg->obj->busy = 0;
         return UG_RESULT_OK;
 
         /* set text */
     case MSG_TEXT_SET:
         msg->obj->busy = 1;
-        msg->obj->text = (const char*)msg->data;
+        msg->obj->text = (const char *)msg->data;
         msg->obj->busy = 0;
         /* and redraw it ! */
         return UG2_SendMessage(msg->obj, MSG_REDRAW, 0, 0, 0, NULL);
 
         /* get text */
     case MSG_TEXT_GET:
-        if (msg->data == NULL) return UG_RESULT_ARG;
+        if (msg->data == NULL)
+            return UG_RESULT_ARG;
         msg->obj->busy = 1;
-        *((const char**)msg->data) = msg->obj->text;
+        *((const char **)msg->data) = msg->obj->text;
         msg->obj->busy = 0;
         return UG_RESULT_OK;
-
 
         /* set text font */
     case MSG_FONT_SET:
         msg->obj->busy = 1;
-        msg->obj->font = (UG2_FONT*)msg->data;
+        msg->obj->font = (UG2_FONT *)msg->data;
         msg->obj->busy = 0;
         /* and redraw it ! */
         return UG2_SendMessage(msg->obj, MSG_REDRAW, 0, 0, 0, NULL);
 
         /* get text font */
     case MSG_FONT_GET:
-        if (msg->data == NULL) return UG_RESULT_ARG;
+        if (msg->data == NULL)
+            return UG_RESULT_ARG;
         msg->obj->busy = 1;
-        *((UG2_FONT**)msg->data) = msg->obj->font;
+        *((UG2_FONT **)msg->data) = msg->obj->font;
         msg->obj->busy = 0;
         return UG_RESULT_OK;
 
-
         /* set the foreground color */
     case MSG_COLOR_FORE_SET:
-        if (msg->data == NULL) return UG_RESULT_ARG;
+        if (msg->data == NULL)
+            return UG_RESULT_ARG;
         msg->obj->busy = 1;
         msg->obj->colors.foreground = (UG2_COLOR)msg->data;
         msg->obj->busy = 0;
@@ -932,15 +988,17 @@ static UG2_RESULT _UG2_DefaultHandleMessage(UG2_MESSAGE* msg)
 
         /* get the foreground color */
     case MSG_COLOR_FORE_GET:
-        if (msg->data == NULL) return UG_RESULT_ARG;
+        if (msg->data == NULL)
+            return UG_RESULT_ARG;
         msg->obj->busy = 1;
-        *((UG2_COLOR*)msg->data) = msg->obj->colors.foreground;
+        *((UG2_COLOR *)msg->data) = msg->obj->colors.foreground;
         msg->obj->busy = 0;
         return UG_RESULT_OK;
 
         /* set the foreground color */
     case MSG_COLOR_BACK_SET:
-        if (msg->data == NULL) return UG_RESULT_ARG;
+        if (msg->data == NULL)
+            return UG_RESULT_ARG;
         msg->obj->busy = 1;
         msg->obj->colors.background = (UG2_COLOR)msg->data;
         msg->obj->busy = 0;
@@ -948,9 +1006,10 @@ static UG2_RESULT _UG2_DefaultHandleMessage(UG2_MESSAGE* msg)
 
         /* get the background color */
     case MSG_COLOR_BACK_GET:
-        if (msg->data == NULL) return UG_RESULT_ARG;
+        if (msg->data == NULL)
+            return UG_RESULT_ARG;
         msg->obj->busy = 1;
-        *((UG2_COLOR*)msg->data) = msg->obj->colors.background;
+        *((UG2_COLOR *)msg->data) = msg->obj->colors.background;
         msg->obj->busy = 0;
         return UG_RESULT_OK;
 
@@ -968,8 +1027,6 @@ static UG2_RESULT _UG2_DefaultHandleMessage(UG2_MESSAGE* msg)
         msg->obj->style &= ~STYLE_VISIBLE;
         msg->obj->busy = 0;
         return UG2_SendMessage(msg->obj, MSG_REDRAW, 0, 0, 0, NULL);
-
-
 
         /* special case: redraw child objects */
     case MSG_REDRAW:
@@ -999,7 +1056,7 @@ static UG2_RESULT _UG2_DefaultHandleMessage(UG2_MESSAGE* msg)
     }
 }
 
-UG2_RESULT UG2_SetFocus(UG2_OBJECT* obj)
+UG2_RESULT UG2_SetFocus(UG2_OBJECT *obj)
 {
     if (!obj)
     {
@@ -1017,11 +1074,14 @@ UG2_RESULT UG2_SetFocus(UG2_OBJECT* obj)
     }
 
     /* check if object can get focus */
-    if (!(obj->style & STYLE_CAN_FOCUS)) return UG_RESULT_FAIL;
+    if (!(obj->style & STYLE_CAN_FOCUS))
+        return UG_RESULT_FAIL;
 
-    if (!obj->parent) return UG_RESULT_FAIL;
+    if (!obj->parent)
+        return UG_RESULT_FAIL;
 
-    if (!_gui.active_window) return UG_RESULT_FAIL;
+    if (!_gui.active_window)
+        return UG_RESULT_FAIL;
 
     if (_gui.active_window->focused_child)
     {
@@ -1036,24 +1096,27 @@ UG2_RESULT UG2_SetFocus(UG2_OBJECT* obj)
     return UG_RESULT_OK;
 }
 
-UG2_RESULT UG2_GetNextFocusable(UG2_OBJECT** obj)
+UG2_RESULT UG2_GetNextFocusable(UG2_OBJECT **obj)
 {
-    if (!obj) return UG_RESULT_ARG;
+    if (!obj)
+        return UG_RESULT_ARG;
 
     *obj = NULL;
 
     /* TODO: this is a mess */
 
-    UG2_OBJECT* active = _gui.active_window;
+    UG2_OBJECT *active = _gui.active_window;
 
-    if (!active) return UG_RESULT_FAIL;
+    if (!active)
+        return UG_RESULT_FAIL;
 
-    UG2_OBJECT* curr_focus = active->focused_child ? active->focused_child : active->child;
+    UG2_OBJECT *curr_focus = active->focused_child ? active->focused_child : active->child;
 
     /* nothing to select */
-    if (!curr_focus) return UG_RESULT_OK;
+    if (!curr_focus)
+        return UG_RESULT_OK;
 
-    UG2_OBJECT* o = curr_focus->next;
+    UG2_OBJECT *o = curr_focus->next;
 
     for (; o; o = o->next)
     {
@@ -1066,13 +1129,15 @@ UG2_RESULT UG2_GetNextFocusable(UG2_OBJECT** obj)
     }
 
     /* nothing to select */
-    if (curr_focus == active->child) return UG_RESULT_OK;
+    if (curr_focus == active->child)
+        return UG_RESULT_OK;
 
     /* start again, but this time from the first child */
     for (o = active->child; o; o = o->next)
     {
         /* nothing to select :( */
-        if (o == curr_focus) return UG_RESULT_OK;
+        if (o == curr_focus)
+            return UG_RESULT_OK;
 
         if (o->style & STYLE_CAN_FOCUS)
         {
@@ -1086,9 +1151,10 @@ UG2_RESULT UG2_GetNextFocusable(UG2_OBJECT** obj)
     return UG_RESULT_OK;
 }
 
-UG2_BOOL UG2_PointInRect(UG2_POINT* p, UG2_RECT* r)
+UG2_BOOL UG2_PointInRect(UG2_POINT *p, UG2_RECT *r)
 {
-    if (!p || !r) return 0;
+    if (!p || !r)
+        return 0;
 
     if ((p->x >= r->xs) && (p->y >= r->ys))
     {
@@ -1097,10 +1163,10 @@ UG2_BOOL UG2_PointInRect(UG2_POINT* p, UG2_RECT* r)
     return 0;
 }
 
-UG2_RESULT UG2_ObjectInPoint(UG2_POINT* p, UG2_OBJECT** obj)
+UG2_RESULT UG2_ObjectInPoint(UG2_POINT *p, UG2_OBJECT **obj)
 {
-    UG2_OBJECT* top = _gui.active_window;
-    UG2_OBJECT* c = NULL;
+    UG2_OBJECT *top = _gui.active_window;
+    UG2_OBJECT *c = NULL;
     UG2_POINT p_rel = *p;
     UG2_RECT child_rect;
 
@@ -1108,10 +1174,12 @@ UG2_RESULT UG2_ObjectInPoint(UG2_POINT* p, UG2_OBJECT** obj)
         &child_rect,
         0, 0, 0, 0);
 
-    if (!p || !obj) return UG_RESULT_ARG;
+    if (!p || !obj)
+        return UG_RESULT_ARG;
     *obj = NULL;
 
-    if (!top) return UG_RESULT_OK;
+    if (!top)
+        return UG_RESULT_OK;
 
     /* first top element would be the windows, but for now, it will be the only focused window */
     if (!UG2_PointInRect(&p_rel, &top->rect))
@@ -1131,18 +1199,19 @@ UG2_RESULT UG2_ObjectInPoint(UG2_POINT* p, UG2_OBJECT** obj)
     return UG_RESULT_OK;
 }
 
-UG2_RESULT UG2_SystemSendMessage(UG_U16 type, UG_U8 id, UG_U8 sub_id, UG_U8 event, void* data)
+UG2_RESULT UG2_SystemSendMessage(
+    UG_U16 type, UG_U8 id, UG_U8 sub_id, UG_U8 event, void *data)
 {
     /* similar to UG2_SendMessage, but for messages that the main gui should consume from the system */
-    UG2_OBJECT* obj = NULL;
+    UG2_OBJECT *obj = NULL;
     UG2_RESULT res = UG_RESULT_MSG_UNHANDLED;
 
-    static UG2_OBJECT* pressed_obj = NULL;
+    static UG2_OBJECT *pressed_obj = NULL;
 
     switch (type)
     {
     case MSG_TOUCH_DOWN:
-        res = UG2_ObjectInPoint((UG2_POINT*)data, &obj);
+        res = UG2_ObjectInPoint((UG2_POINT *)data, &obj);
         if (res != UG_RESULT_OK)
             goto ret;
 
@@ -1174,7 +1243,7 @@ UG2_RESULT UG2_SystemSendMessage(UG_U16 type, UG_U8 id, UG_U8 sub_id, UG_U8 even
         return UG2_SendMessage(obj, type, id, sub_id, event, data);
 
     case MSG_TOUCH_UP:
-        res = UG2_ObjectInPoint((UG2_POINT*)data, &obj);
+        res = UG2_ObjectInPoint((UG2_POINT *)data, &obj);
         if ((res != UG_RESULT_OK))
             goto ret;
 
@@ -1203,7 +1272,7 @@ UG2_RESULT UG2_SystemSendMessage(UG_U16 type, UG_U8 id, UG_U8 sub_id, UG_U8 even
             res = UG2_GetNextFocusable(&obj);
             if ((res != UG_RESULT_OK) || !obj)
                 goto ret;
-            
+
             /* now set the focus */
             res = UG2_SetFocus(obj);
         }
@@ -1223,19 +1292,23 @@ ret:
     return res;
 }
 
-UG2_RESULT UG2_ShowObject(UG2_OBJECT* obj)
+UG2_RESULT UG2_ShowObject(UG2_OBJECT *obj)
 {
     return UG2_SendMessage(obj, MSG_SHOW, 0, 0, 0, NULL);
 }
 
-UG2_RESULT UG2_SendMessage(UG2_OBJECT* obj, UG_U16 type, UG_U8 id, UG_U8 sub_id, UG_U8 event, void* data)
+UG2_RESULT UG2_SendMessage(
+    UG2_OBJECT *obj, UG_U16 type, UG_U8 id, UG_U8 sub_id, UG_U8 event, void *data)
 {
-    if (!obj) return UG_RESULT_ARG;
+    if (!obj)
+        return UG_RESULT_ARG;
 
-    if (!obj->handle_message) return UG_RESULT_MSG_UNHANDLED;
+    if (!obj->handle_message)
+        return UG_RESULT_MSG_UNHANDLED;
 
-    UG2_MESSAGE* msg = (UG2_MESSAGE*)malloc(sizeof(UG2_MESSAGE));
-    if (!msg) return UG_RESULT_NO_MEM;
+    UG2_MESSAGE *msg = (UG2_MESSAGE *)malloc(sizeof(UG2_MESSAGE));
+    if (!msg)
+        return UG_RESULT_NO_MEM;
 
     msg->obj = obj;
     msg->data = data;
@@ -1245,7 +1318,7 @@ UG2_RESULT UG2_SendMessage(UG2_OBJECT* obj, UG_U16 type, UG_U8 id, UG_U8 sub_id,
     msg->type = type;
 
     // TODO: use queues
-    //enqueue((node_t**)_gui.message_pump, (void*)msg);
+    // enqueue((node_t**)_gui.message_pump, (void*)msg);
 
     UG2_RESULT res = UG_RESULT_MSG_UNHANDLED;
 
@@ -1267,9 +1340,7 @@ UG2_RESULT UG2_SendMessage(UG2_OBJECT* obj, UG_U16 type, UG_U8 id, UG_U8 sub_id,
     return res;
 }
 
-
-
-UG2_RESULT UG2_Init(UG2_DEVICE* device)
+UG2_RESULT UG2_Init(UG2_DEVICE *device)
 {
     UG_U8 i;
 
@@ -1307,4 +1378,3 @@ UG2_RESULT UG2_Init(UG2_DEVICE* device)
 
     return UG_RESULT_OK;
 }
-

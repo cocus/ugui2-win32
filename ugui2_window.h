@@ -26,12 +26,12 @@ struct S_WINDOW
     UG_TITLE title;
 };
 
-typedef struct S_WINDOW                               UG2_WINDOW;
-#define UG2_CAST_OBJ_AS_WINDOW(obj) ((UG2_WINDOW*)(obj))
+typedef struct S_WINDOW UG2_WINDOW;
+#define UG2_CAST_OBJ_AS_WINDOW(obj) ((UG2_WINDOW *)(obj))
 
-
-UG2_RESULT UG2_WindowInitialize(UG2_WINDOW* wnd,
-    UG2_OBJECT* parent,
+UG2_RESULT UG2_WindowInitialize(
+    UG2_WINDOW *wnd,
+    UG2_OBJECT *parent,
     UG2_POS_T x,
     UG2_POS_T y,
     UG2_POS_T width,

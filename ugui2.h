@@ -1,29 +1,35 @@
 #pragma once
 
-//#include <stdlib.h>
+#include <stddef.h>
 #include "ugui2_config.h"
 #include "ugui2_colors.h"
+
+#if defined(__GNUC__) && __GNUC__ >= 7
+#define __fallthrough __attribute__((fallthrough))
+#elif !defined(__fallthrough)
+#define __fallthrough ((void)0)
+#endif /* __GNUC__ >= 7 */
 
 /* -------------------------------------------------------------------------------- */
 /* -- TYPEDEFS                                                                   -- */
 /* -------------------------------------------------------------------------------- */
-typedef struct S_OBJECT                               UG2_OBJECT;
-typedef UG_S8                                         UG2_RESULT;
-typedef UG_U8                                         UG2_BOOL;
+typedef struct S_OBJECT UG2_OBJECT;
+typedef UG_S8 UG2_RESULT;
+typedef UG_U8 UG2_BOOL;
 #if defined(UGUI2_USE_COLOR_RGB888)
-typedef UG_U32                       UG2_COLOR;
+typedef UG_U32 UG2_COLOR;
 #elif defined(UGUI2_USE_COLOR_RGB565)
-typedef UG_U16                       UG2_COLOR;
+typedef UG_U16 UG2_COLOR;
 #elif defined(UGUI2_USE_COLOR_BW)
-typedef UG_U8                        UG2_COLOR;
+typedef UG_U8 UG2_COLOR;
 #endif
 #if !defined(UGUI2_USE_COLOR_RGB888) && !defined(UGUI2_USE_COLOR_RGB565) && !defined(UGUI2_USE_COLOR_BW)
 #error "You must define a color space!"
 #endif
 #if defined(UGUI2_USE_COLOR_RGB888) && defined(UGUI2_USE_COLOR_RGB565) || \
-      defined(UGUI2_USE_COLOR_RGB888) && defined(UGUI2_USE_COLOR_BW) || \
-      defined(UGUI2_USE_COLOR_RGB565) && defined(UGUI2_USE_COLOR_BW) || \
-      defined(UGUI2_USE_COLOR_RGB888) && defined(UGUI2_USE_COLOR_RGB565) && defined(UGUI2_USE_COLOR_BW)
+    defined(UGUI2_USE_COLOR_RGB888) && defined(UGUI2_USE_COLOR_BW) ||     \
+    defined(UGUI2_USE_COLOR_RGB565) && defined(UGUI2_USE_COLOR_BW) ||     \
+    defined(UGUI2_USE_COLOR_RGB888) && defined(UGUI2_USE_COLOR_RGB565) && defined(UGUI2_USE_COLOR_BW)
 #error "You must define only one color space!"
 #endif
 
@@ -31,37 +37,53 @@ typedef UG_U8                        UG2_COLOR;
 /* -- DEFINES                                                                    -- */
 /* -------------------------------------------------------------------------------- */
 /* Helpers */
-#define UG2_GetFontWidth(f)                             *(f+1)
-#define UG2_GetFontHeight(f)                            *(f+2)
-#define UG2_swap(x, y)                                  { x = y^x; y = x ^ y; x = y ^ x; }
-#define UG2_RectFromDims(r,x,y,w,h)                     { (r)->xs = x; (r)->ys = y; (r)->xe = x + w; (r)->ye = y + h; }
-#define UG2_PosFromRect(r,_xs,_ys,_xe,_ye)              { _xs = (r)->xs; _ys = (r)->ys; _xe = (r)->xe; _ye = (r)->ye; }
+#define UG2_GetFontWidth(f) *(f + 1)
+#define UG2_GetFontHeight(f) *(f + 2)
+#define UG2_swap(x, y) \
+    {                  \
+        x = y ^ x;     \
+        y = x ^ y;     \
+        x = y ^ x;     \
+    }
+#define UG2_RectFromDims(r, x, y, w, h) \
+    {                                   \
+        (r)->xs = x;                    \
+        (r)->ys = y;                    \
+        (r)->xe = x + w;                \
+        (r)->ye = y + h;                \
+    }
+#define UG2_PosFromRect(r, _xs, _ys, _xe, _ye) \
+    {                                          \
+        _xs = (r)->xs;                         \
+        _ys = (r)->ys;                         \
+        _xe = (r)->xe;                         \
+        _ye = (r)->ye;                         \
+    }
 
-#define UG2_BaseObject(obj)                             ((UG2_OBJECT*)(obj))
-
+#define UG2_BaseObject(obj) ((UG2_OBJECT *)(obj))
 
 /* Sizing helpers */
-#define UG2_SizeToPos(xs, ys, w, h)                     xs, ys, xs+w, ys+h
+#define UG2_SizeToPos(xs, ys, w, h) xs, ys, xs + w, ys + h
 
 /* Alignments */
-#define ALIGN_H_LEFT                                    (1<<0)
-#define ALIGN_H_CENTER                                  (1<<1)
-#define ALIGN_H_RIGHT                                   (1<<2)
-#define ALIGN_V_TOP                                     (1<<3)
-#define ALIGN_V_CENTER                                  (1<<4)
-#define ALIGN_V_BOTTOM                                  (1<<5)
-#define ALIGN_BOTTOM_RIGHT                              (ALIGN_V_BOTTOM|ALIGN_H_RIGHT)
-#define ALIGN_BOTTOM_CENTER                             (ALIGN_V_BOTTOM|ALIGN_H_CENTER)
-#define ALIGN_BOTTOM_LEFT                               (ALIGN_V_BOTTOM|ALIGN_H_LEFT)
-#define ALIGN_CENTER_RIGHT                              (ALIGN_V_CENTER|ALIGN_H_RIGHT)
-#define ALIGN_CENTER                                    (ALIGN_V_CENTER|ALIGN_H_CENTER)
-#define ALIGN_CENTER_LEFT                               (ALIGN_V_CENTER|ALIGN_H_LEFT)
-#define ALIGN_TOP_RIGHT                                 (ALIGN_V_TOP|ALIGN_H_RIGHT)
-#define ALIGN_TOP_CENTER                                (ALIGN_V_TOP|ALIGN_H_CENTER)
-#define ALIGN_TOP_LEFT                                  (ALIGN_V_TOP|ALIGN_H_LEFT)
+#define ALIGN_H_LEFT (1 << 0)
+#define ALIGN_H_CENTER (1 << 1)
+#define ALIGN_H_RIGHT (1 << 2)
+#define ALIGN_V_TOP (1 << 3)
+#define ALIGN_V_CENTER (1 << 4)
+#define ALIGN_V_BOTTOM (1 << 5)
+#define ALIGN_BOTTOM_RIGHT (ALIGN_V_BOTTOM | ALIGN_H_RIGHT)
+#define ALIGN_BOTTOM_CENTER (ALIGN_V_BOTTOM | ALIGN_H_CENTER)
+#define ALIGN_BOTTOM_LEFT (ALIGN_V_BOTTOM | ALIGN_H_LEFT)
+#define ALIGN_CENTER_RIGHT (ALIGN_V_CENTER | ALIGN_H_RIGHT)
+#define ALIGN_CENTER (ALIGN_V_CENTER | ALIGN_H_CENTER)
+#define ALIGN_CENTER_LEFT (ALIGN_V_CENTER | ALIGN_H_LEFT)
+#define ALIGN_TOP_RIGHT (ALIGN_V_TOP | ALIGN_H_RIGHT)
+#define ALIGN_TOP_CENTER (ALIGN_V_TOP | ALIGN_H_CENTER)
+#define ALIGN_TOP_LEFT (ALIGN_V_TOP | ALIGN_H_LEFT)
 
 /* Color scheme indices */
-#define UG2_COLORS_ACTIVE   0
+#define UG2_COLORS_ACTIVE 0
 #define UG2_COLORS_INACTIVE 1
 
 /* Touch/Button types */
@@ -76,11 +98,11 @@ typedef UG_U8                        UG2_COLOR;
 /* -------------------------------------------------------------------------------- */
 /* -- FUNCTION RESULTS                                                           -- */
 /* -------------------------------------------------------------------------------- */
-#define UG_RESULT_NO_MEM                              -4
-#define UG_RESULT_MSG_UNHANDLED                       -3
-#define UG_RESULT_ARG                                 -2
-#define UG_RESULT_FAIL                                -1
-#define UG_RESULT_OK                                  0
+#define UG_RESULT_NO_MEM -4
+#define UG_RESULT_MSG_UNHANDLED -3
+#define UG_RESULT_ARG -2
+#define UG_RESULT_FAIL -1
+#define UG_RESULT_OK 0
 
 /* -------------------------------------------------------------------------------- */
 /* -- FONTS                                                                      -- */
@@ -91,48 +113,48 @@ typedef enum
 {
     FONT_TYPE_1BPP,
     FONT_TYPE_8BPP,
-    FONT_TYPE_LIC_1BPP   /* Fonts generated by the LCD Image Converter */
+    FONT_TYPE_LIC_1BPP /* Fonts generated by the LCD Image Converter */
 } FONT_TYPE;
 
 typedef struct
 {
-    FONT_TYPE    font_type;
-    UG_U8        is_old_font;                      // This exists to maintain compatibility with old fonts, as they use code page 850 instead of Unicode
-    UG_U8        char_width;
-    UG_U8        char_height;
-    UG_U16       bytes_per_char;
-    UG_U16       number_of_chars;
-    UG_U16       number_of_offsets;
-    const UG_U8* widths;
-    const UG_U8* offsets;
-    const UG_U8* data;
-    UG2_FONT* font;
+    FONT_TYPE font_type;
+    UG_U8 is_old_font; // This exists to maintain compatibility with old fonts, as they use code page 850 instead of Unicode
+    UG_U8 char_width;
+    UG_U8 char_height;
+    UG_U16 bytes_per_char;
+    UG_U16 number_of_chars;
+    UG_U16 number_of_offsets;
+    const UG_U8 *widths;
+    const UG_U8 *offsets;
+    const UG_U8 *data;
+    UG2_FONT *font;
 } UG2_FONT_DATA;
 
 #ifdef UGUI2_USE_UTF8
-typedef UG_U16                                        UG2_CHAR;
+typedef UG_U16 UG2_CHAR;
 #else
-typedef char                                          UG2_CHAR;
+typedef char UG2_CHAR;
 #endif
 
 /* for fonts generated by LCD Image Converter */
 typedef const struct
 {
-    UG2_CHAR      code;
-    UG_U8        width;
-    UG_U16       size;
-    const UG_U8* data;
+    UG2_CHAR code;
+    UG_U8 width;
+    UG_U16 size;
+    const UG_U8 *data;
 } UG_FONT_LIC_INFO;
 
 typedef const struct
 {
-    FONT_TYPE         font_type;        // FONT_TYPE_LIC_1BPP
-    UG_U8             char_width;       // max width of char
-    UG_U8             char_height;      // Char height
-    UG_U16            num_of_chars;     // Number of chars
-    UG2_CHAR           first_char;       // Min char code
-    UG2_CHAR           last_char;        // Max char code
-    UG_FONT_LIC_INFO* info;
+    FONT_TYPE font_type; // FONT_TYPE_LIC_1BPP
+    UG_U8 char_width;    // max width of char
+    UG_U8 char_height;   // Char height
+    UG_U16 num_of_chars; // Number of chars
+    UG2_CHAR first_char; // Min char code
+    UG2_CHAR last_char;  // Max char code
+    UG_FONT_LIC_INFO *info;
 } UG_FONT_LIC;
 
 /* -------------------------------------------------------------------------------- */
@@ -174,12 +196,11 @@ typedef struct
     UG2_COLOR background;
 } UG2_COLOR_FORE_BACK;
 
-
 /* Text structure */
 typedef struct
 {
-    const char* str;
-    UG2_FONT* font;
+    const char *str;
+    UG2_FONT *font;
     UG2_RECT area;
     UG2_COLOR_FORE_BACK colors;
     UG_U8 align;
@@ -233,14 +254,13 @@ typedef enum
 
 typedef struct
 {
-    UG2_OBJECT* obj;
+    UG2_OBJECT *obj;
     UG_U16 type; /* see UG2_MESSAGE_TYPE for base message types */
     UG_U8 id;
     UG_U8 sub_id;
     UG_U8 event;
-    void* data;
+    void *data;
 } UG2_MESSAGE;
-
 
 /* -------------------------------------------------------------------------------- */
 /* -- OBJECTS                                                                    -- */
@@ -259,35 +279,33 @@ typedef enum
 
 typedef enum
 {
-    STYLE_HIDDEN  = (0 << 0),
+    STYLE_HIDDEN = (0 << 0),
     STYLE_VISIBLE = (1 << 0),
 
     STYLE_DISABLED = (0 << 1),
-    STYLE_ENABLED  = (1 << 1),
+    STYLE_ENABLED = (1 << 1),
 
     STYLE_UNFOCUSED = (0 << 2),
-    STYLE_FOCUSED   = (1 << 2),
+    STYLE_FOCUSED = (1 << 2),
 
     STYLE_CANT_FOCUS = (0 << 3),
-    STYLE_CAN_FOCUS  = (1 << 3),
+    STYLE_CAN_FOCUS = (1 << 3),
 
     STYLE_NO_TITLEBAR = (0 << 4),
-    STYLE_TITLEBAR    = (1 << 4),
+    STYLE_TITLEBAR = (1 << 4),
 
     STYLE_FLAT = (0 << 5),
-    STYLE_3D   = (1 << 5),
+    STYLE_3D = (1 << 5),
 
     STYLE_BACKGROUND_SOLID = (0 << 6),
-    STYLE_BACKGROUND_MESH  = (1 << 6),
-    
+    STYLE_BACKGROUND_MESH = (1 << 6),
 
     STYLE_BACKGROUND_SOLID2 = (0 << 7),
-    STYLE_BACKGROUND_BLEND  = (1 << 7), /* requires STYLE_BACKGROUND_SOLID to be set */
-
+    STYLE_BACKGROUND_BLEND = (1 << 7), /* requires STYLE_BACKGROUND_SOLID to be set */
 
 } UG2_STYLE_TYPES;
 
-typedef UG2_RESULT (*UG2_HandleMessage)(UG2_MESSAGE*);
+typedef UG2_RESULT (*UG2_HandleMessage)(UG2_MESSAGE *);
 
 struct S_OBJECT
 {
@@ -295,54 +313,52 @@ struct S_OBJECT
     UG2_COLOR_FORE_BACK colors;
     UG2_COLOR_FORE_BACK colors_inactive;
 
-    UG2_FONT* font;
-    const char* text;
+    UG2_FONT *font;
+    const char *text;
     UG2_POS_T text_h_space;
     UG2_POS_T text_v_space;
     UG_U8 text_align;
 
-    UG2_RECT rect;                            /* absolute area of the object                */
-    UG2_RECT client_rect;                            /* absolute area of the object                */
+    UG2_RECT rect;        /* absolute area of the object                */
+    UG2_RECT client_rect; /* absolute area of the object                */
 
-    UG2_OBJECT_TYPES_TYPE type;                               /* object type                                */
-    UG_U8 id;                                 /* object ID                                  */
+    UG2_OBJECT_TYPES_TYPE type; /* object type                                */
+    UG_U8 id;                   /* object ID                                  */
 
     UG_U8 busy;
-    UG2_OBJECT* parent;
-    UG2_OBJECT* next; /* list of children, if any */
-    UG2_OBJECT* child; /* list of children, if any */
-    
-    UG2_OBJECT* focused_child; /* focused children, if any */
+    UG2_OBJECT *parent;
+    UG2_OBJECT *next;  /* list of children, if any */
+    UG2_OBJECT *child; /* list of children, if any */
 
-    UG2_HandleMessage handle_message;   /* pointer to object-specific update function */
+    UG2_OBJECT *focused_child; /* focused children, if any */
+
+    UG2_HandleMessage handle_message; /* pointer to object-specific update function */
     UG2_HandleMessage user_handler;
-
 };
 
-#define UG2_TYPEDEF_OBJ_INHERITT      UG2_OBJECT base_object /* this is an object after all */
-
+#define UG2_TYPEDEF_OBJ_INHERITT UG2_OBJECT base_object /* this is an object after all */
 
 /* -------------------------------------------------------------------------------- */
-/* -- µGUI DRIVER                                                                -- */
+/* -- ï¿½GUI DRIVER                                                                -- */
 /* -------------------------------------------------------------------------------- */
 typedef struct
 {
-    void* driver;
+    void *driver;
     UG_U8 state;
 } UG2_DRIVER;
 
-#define DRIVER_REGISTERED                             (1<<0)
-#define DRIVER_ENABLED                                (1<<1)
+#define DRIVER_REGISTERED (1 << 0)
+#define DRIVER_ENABLED (1 << 1)
 
 /* Supported drivers */
-#define NUMBER_OF_DRIVERS                             4
-#define DRIVER_DRAW_LINE                              0
-#define DRIVER_FILL_FRAME                             1
-#define DRIVER_FILL_AREA                              2
-#define DRIVER_DRAW_BMP                               3
+#define NUMBER_OF_DRIVERS 4
+#define DRIVER_DRAW_LINE 0
+#define DRIVER_FILL_FRAME 1
+#define DRIVER_FILL_AREA 2
+#define DRIVER_DRAW_BMP 3
 
 /* -------------------------------------------------------------------------------- */
-/* -- µGUI CORE STRUCTURE                                                        -- */
+/* -- ï¿½GUI CORE STRUCTURE                                                        -- */
 /* -------------------------------------------------------------------------------- */
 
 struct _UG2_DEVICE;
@@ -351,9 +367,10 @@ typedef struct _UG2_DEVICE UG2_DEVICE;
 typedef void (*PixelSetFunc)(UG2_POS_T, UG2_POS_T, const UG2_COLOR);
 typedef void (*FlushFunc)(void);
 typedef void (*PushPixelsFunc)(UG_U16, UG2_COLOR);
-typedef PushPixelsFunc(*DriverFillAreaFunct)(UG_S16, UG_S16, UG_S16, UG_S16);
+typedef PushPixelsFunc (*DriverFillAreaFunct)(UG_S16, UG_S16, UG_S16, UG_S16);
 
-struct _UG2_DEVICE {
+struct _UG2_DEVICE
+{
     UG2_POS_T x_dim;
     UG2_POS_T y_dim;
     PixelSetFunc pset;
@@ -362,13 +379,13 @@ struct _UG2_DEVICE {
 
 typedef struct
 {
-    UG2_DEVICE* device;
+    UG2_DEVICE *device;
 
-    UG2_OBJECT* next_window;
-    UG2_OBJECT* active_window;
-    UG2_OBJECT* last_window;
+    UG2_OBJECT *next_window;
+    UG2_OBJECT *active_window;
+    UG2_OBJECT *last_window;
 
-    UG2_FONT* font;
+    UG2_FONT *font;
     UG2_FONT_DATA currentFont;
     UG_U8 transparent_font;
     UG_S8 char_h_space;
@@ -378,31 +395,27 @@ typedef struct
     UG_U8 state;
     UG2_DRIVER driver[NUMBER_OF_DRIVERS];
 
-    void* message_pump; /* impl specific */
+    void *message_pump; /* impl specific */
 } UG2_GUI;
-
 
 /* GUI accessors */
 UG2_COLOR UG2_GuiGetDesktopColor(void);
-UG2_OBJECT* UG2_GuiGetActiveWindow(void);
-void UG2_GuiSetActiveWindow(UG2_OBJECT* wnd);
-
-
+UG2_OBJECT *UG2_GuiGetActiveWindow(void);
+void UG2_GuiSetActiveWindow(UG2_OBJECT *wnd);
 
 void UG2_FillScreen(UG2_COLOR c);
 void UG_DrawLine(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, const UG2_COLOR c);
-void UG2_Draw3DObjectFrame(UG2_POS_T xs, UG2_POS_T ys, UG2_POS_T xe, UG2_POS_T ye, const UG2_COLOR_RECT* frame_colors);
+void UG2_Draw3DObjectFrame(UG2_POS_T xs, UG2_POS_T ys, UG2_POS_T xe, UG2_POS_T ye, const UG2_COLOR_RECT *frame_colors);
 void UG2_DrawMesh(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, UG2_POS_T spacing, UG2_COLOR c);
 void UG2_DrawFrame(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, const UG2_COLOR c);
 void UG2_DrawDottedFrame(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, UG2_POS_T spacing, const UG2_COLOR c);
 void UG2_FillFrame(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, const UG2_COLOR c);
 
-
-void UG2_PutText(UG2_TEXT* txt);
+void UG2_PutText(UG2_TEXT *txt);
 
 UG2_RESULT UG2_GenericObjectInitialize(
-    UG2_OBJECT* obj,
-    UG2_OBJECT* parent,
+    UG2_OBJECT *obj,
+    UG2_OBJECT *parent,
     UG2_POS_T x,
     UG2_POS_T y,
     UG2_POS_T width,
@@ -410,23 +423,22 @@ UG2_RESULT UG2_GenericObjectInitialize(
     UG2_HandleMessage handle_message,
     UG2_OBJECT_TYPES_TYPE type);
 
+UG2_RESULT UG2_ObjectSetForeColor(UG2_OBJECT *obj, const UG2_COLOR c);
+UG2_RESULT UG2_ObjectGetForeColor(UG2_OBJECT *obj, UG2_COLOR *c);
 
-UG2_RESULT UG2_ObjectSetForeColor(UG2_OBJECT* obj, const UG2_COLOR c);
-UG2_RESULT UG2_ObjectGetForeColor(UG2_OBJECT* obj, UG2_COLOR* c);
+UG2_RESULT UG2_ObjectSetBackColor(UG2_OBJECT *obj, const UG2_COLOR c);
+UG2_RESULT UG2_ObjectGetBackColor(UG2_OBJECT *obj, UG2_COLOR *c);
 
-UG2_RESULT UG2_ObjectSetBackColor(UG2_OBJECT* obj, const UG2_COLOR c);
-UG2_RESULT UG2_ObjectGetBackColor(UG2_OBJECT* obj, UG2_COLOR* c);
+UG2_RESULT UG2_ObjectSetText(UG2_OBJECT *obj, const char *str);
+UG2_RESULT UG2_ObjectSetFont(UG2_OBJECT *obj, UG2_FONT *font);
 
-UG2_RESULT UG2_ObjectSetText(UG2_OBJECT* obj, const char* str);
-UG2_RESULT UG2_ObjectSetFont(UG2_OBJECT* obj, UG2_FONT* font);
+UG2_RESULT UG2_ObjectSetTextAlign(UG2_OBJECT *obj, const UG_U8 align);
 
-UG2_RESULT UG2_ObjectSetTextAlign(UG2_OBJECT* obj, const UG_U8 align);
+UG2_RESULT UG2_SetParent(UG2_OBJECT *new_parent, UG2_OBJECT *obj);
 
-UG2_RESULT UG2_SetParent(UG2_OBJECT* new_parent, UG2_OBJECT* obj);
+UG2_RESULT UG2_GetObjectScreenRect(UG2_OBJECT *obj, UG2_RECT *rect);
 
-UG2_RESULT UG2_GetObjectScreenRect(UG2_OBJECT* obj, UG2_RECT* rect);
-
-UG2_RESULT UG2_SystemSendMessage(UG_U16 type, UG_U8 id, UG_U8 sub_id, UG_U8 event, void* data);
-UG2_RESULT UG2_ShowObject(UG2_OBJECT* obj);
-UG2_RESULT UG2_SendMessage(UG2_OBJECT* obj, UG_U16 type, UG_U8 id, UG_U8 sub_id, UG_U8 event, void* data);
-UG2_RESULT UG2_Init(UG2_DEVICE* device);
+UG2_RESULT UG2_SystemSendMessage(UG_U16 type, UG_U8 id, UG_U8 sub_id, UG_U8 event, void *data);
+UG2_RESULT UG2_ShowObject(UG2_OBJECT *obj);
+UG2_RESULT UG2_SendMessage(UG2_OBJECT *obj, UG_U16 type, UG_U8 id, UG_U8 sub_id, UG_U8 event, void *data);
+UG2_RESULT UG2_Init(UG2_DEVICE *device);

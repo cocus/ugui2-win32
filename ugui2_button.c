@@ -1,23 +1,19 @@
 #include "ugui2_button.h"
 
-static const UG2_COLOR_RECT _ug2_checkbox_pressed_border_theme[3] = { C_PAL_BUTTON_PRESSED };
+static const UG2_COLOR_RECT _ug2_checkbox_pressed_border_theme[3] = {C_PAL_BUTTON_PRESSED};
 
-static const UG2_COLOR_RECT _ug2_checkbox_released_border_theme[3] = { C_PAL_BUTTON_RELEASED };
+static const UG2_COLOR_RECT _ug2_checkbox_released_border_theme[3] = {C_PAL_BUTTON_RELEASED};
 
-static UG2_RESULT _UG2_ButtonHandleRedraw(UG2_BUTTON* btn)
+static UG2_RESULT _UG2_ButtonHandleRedraw(UG2_BUTTON *btn)
 {
-    UG2_POS_T xs, ys, xe, ye;
-    UG2_RECT abs_rect = { 0, 0, 0, 0 };
+    UG2_RECT abs_rect = {0, 0, 0, 0};
     UG2_TEXT txt;
     UG2_POS_T d = 0, o = 0;
 
-    if (btn == NULL) return UG_RESULT_ARG;
+    if (btn == NULL)
+        return UG_RESULT_ARG;
 
     UG2_GetObjectScreenRect(UG2_BaseObject(btn), &abs_rect);
-
-    UG2_PosFromRect(
-        &abs_rect,
-        xs, ys, xe, ye);
 
     /* Is the window visible? */
     if (btn->base_object.style & STYLE_VISIBLE)
@@ -25,11 +21,16 @@ static UG2_RESULT _UG2_ButtonHandleRedraw(UG2_BUTTON* btn)
         /* 3D or 2D style? */
         d = (btn->base_object.style & STYLE_3D) ? 3 : 1;
 
-        txt.colors= btn->base_object.colors;
-
-        UG2_FillFrame(abs_rect.xs + d, abs_rect.ys + d, abs_rect.xe - d, abs_rect.ye - d, txt.colors.background);
+        /* clear background */
+        UG2_FillFrame(
+            abs_rect.xs + d,
+            abs_rect.ys + d,
+            abs_rect.xe - d,
+            abs_rect.ye - d,
+            btn->base_object.colors.background);
 
         /* Draw button text */
+        txt.colors = btn->base_object.colors;
         txt.area.xs = abs_rect.xs + d + o;
         txt.area.ys = abs_rect.ys + d + o;
         txt.area.xe = abs_rect.xe - d + o;
@@ -43,31 +44,54 @@ static UG2_RESULT _UG2_ButtonHandleRedraw(UG2_BUTTON* btn)
 
         /* Draw button frame */
         if (btn->base_object.style & STYLE_3D)
-        {  /* 3D */
-            UG2_Draw3DObjectFrame(abs_rect.xs, abs_rect.ys, abs_rect.xe, abs_rect.ye, (btn->pressed) ? _ug2_checkbox_pressed_border_theme : _ug2_checkbox_released_border_theme);
+        { /* 3D */
+            UG2_Draw3DObjectFrame(
+                abs_rect.xs,
+                abs_rect.ys,
+                abs_rect.xe,
+                abs_rect.ye,
+                (btn->pressed) ? _ug2_checkbox_pressed_border_theme : _ug2_checkbox_released_border_theme);
             if (btn->base_object.style & STYLE_FOCUSED)
             {
-                UG2_DrawDottedFrame(abs_rect.xs + 2, abs_rect.ys + 2, abs_rect.xe - 4, abs_rect.ye - 4, 2, C_BLACK);
+                UG2_DrawDottedFrame(
+                    abs_rect.xs + 2,
+                    abs_rect.ys + 2,
+                    abs_rect.xe - 4,
+                    abs_rect.ye - 4,
+                    2,
+                    C_BLACK);
             }
         }
         else
-        {  /* 2D */
-            UG2_DrawFrame(abs_rect.xs, abs_rect.ys, abs_rect.xe, abs_rect.ye, (btn->pressed) ? btn->base_object.colors.background : btn->base_object.colors.foreground);
+        { /* 2D */
+            UG2_DrawFrame(
+                abs_rect.xs,
+                abs_rect.ys,
+                abs_rect.xe,
+                abs_rect.ye,
+                (btn->pressed) ? btn->base_object.colors.background : btn->base_object.colors.foreground);
         }
     }
     else
     {
-        UG2_FillFrame(abs_rect.xs + d, abs_rect.ys + d, abs_rect.xe - d, abs_rect.ye - d, btn->base_object.colors.background);
+        /* invisible so fill it with the background color? */
+        UG2_FillFrame(
+            abs_rect.xs + d,
+            abs_rect.ys + d,
+            abs_rect.xe - d,
+            abs_rect.ye - d,
+            btn->base_object.colors.background);
     }
 
     return UG_RESULT_OK;
 }
 
-static UG2_RESULT _UG2_ProgressHandleMessage(UG2_MESSAGE* msg)
+static UG2_RESULT _UG2_ProgressHandleMessage(UG2_MESSAGE *msg)
 {
-    if (!msg || !msg->obj) return UG_RESULT_ARG;
+    if (!msg || !msg->obj)
+        return UG_RESULT_ARG;
 
-    UG2_BUTTON* btn = UG2_CAST_OBJ_AS_BUTTON(msg->obj);
+    UG2_BUTTON *btn = UG2_CAST_OBJ_AS_BUTTON(msg->obj);
 
     switch (msg->type)
     {
@@ -79,10 +103,11 @@ static UG2_RESULT _UG2_ProgressHandleMessage(UG2_MESSAGE* msg)
         return UG_RESULT_OK;
 
     case MSG_KEY_DOWN:
-        if (msg->id != ' ') return UG_RESULT_MSG_UNHANDLED;
+        if (msg->id != ' ')
+            return UG_RESULT_MSG_UNHANDLED;
         /* TODO: something different */
         __fallthrough;
-        /* fallthrough */
+        /* fall through */
 
         /* press */
     case MSG_TOUCH_DOWN:
@@ -97,10 +122,11 @@ static UG2_RESULT _UG2_ProgressHandleMessage(UG2_MESSAGE* msg)
         return UG_RESULT_OK;
 
     case MSG_KEY_UP:
-        if (msg->id != ' ') return UG_RESULT_MSG_UNHANDLED;
+        if (msg->id != ' ')
+            return UG_RESULT_MSG_UNHANDLED;
         /* TODO: something different */
         __fallthrough;
-        /* fallthrough */
+        /* fall through */
 
         /* release press */
     case MSG_TOUCH_UP:
@@ -119,8 +145,9 @@ static UG2_RESULT _UG2_ProgressHandleMessage(UG2_MESSAGE* msg)
     }
 }
 
-UG2_RESULT UG2_ButtonInitialize(UG2_BUTTON* btn,
-    UG2_OBJECT* parent,
+UG2_RESULT UG2_ButtonInitialize(
+    UG2_BUTTON *btn,
+    UG2_OBJECT *parent,
     UG2_POS_T x,
     UG2_POS_T y,
     UG2_POS_T width,
@@ -137,7 +164,8 @@ UG2_RESULT UG2_ButtonInitialize(UG2_BUTTON* btn,
         &_UG2_ProgressHandleMessage,
         OBJ_TYPE_WINDOW);
 
-    if (res != UG_RESULT_OK) return res;
+    if (res != UG_RESULT_OK)
+        return res;
 
     /* Initialize window */
     btn->base_object.user_handler = handle_message;

@@ -7,9 +7,9 @@
 #include <stdint.h>
 
 /* Enable color mode */
-#define UGUI2_USE_COLOR_RGB888   // RGB = 0xFF,0xFF,0xFF
+// #define UGUI2_USE_COLOR_RGB888   // RGB = 0xFF,0xFF,0xFF
 // #define UGUI2_USE_COLOR_RGB565   // RGB = 0bRRRRRGGGGGGBBBBB
-// #define UGUI2_USE_COLOR_BW   // BW = 0x00|0xFF
+#define UGUI2_USE_COLOR_BW   // BW = 0x00|0xFF
 
 
 #ifdef UGUI2_USE_COLOR_BW

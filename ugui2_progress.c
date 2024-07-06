@@ -1,33 +1,39 @@
 #include "ugui2_progress.h"
 
-static const UG2_COLOR_RECT _ug2_progress_default_border_theme[3] = { C_PAL_PROGRESS };
+static const UG2_COLOR_RECT _ug2_progress_default_border_theme[3] = {C_PAL_PROGRESS};
 
-static UG2_RESULT _UG2_ProgressHandleRedraw(UG2_PROGRESS* pb)
+static UG2_RESULT _UG2_ProgressHandleRedraw(UG2_PROGRESS *pb)
 {
-    UG2_POS_T xs, ys, xe, ye;
-    UG2_RECT abs_rect = { 0, 0, 0, 0 };
+    UG2_RECT abs_rect = {0, 0, 0, 0};
     UG2_POS_T d = 0;
     UG2_POS_T w, wps, wpe;
 
-    if (pb == NULL) return UG_RESULT_ARG;
+    if (pb == NULL)
+        return UG_RESULT_ARG;
 
     UG2_GetObjectScreenRect(UG2_BaseObject(pb), &abs_rect);
-
-    UG2_PosFromRect(
-        &abs_rect,
-        xs, ys, xe, ye);
 
     /* Is the window visible? */
     if (pb->base_object.style & STYLE_VISIBLE)
     {
         if (pb->base_object.style & STYLE_3D)
-        {  /* 3D */
-            UG2_Draw3DObjectFrame(abs_rect.xs, abs_rect.ys, abs_rect.xe, abs_rect.ye, _ug2_progress_default_border_theme);
+        { /* 3D */
+            UG2_Draw3DObjectFrame(
+                abs_rect.xs,
+                abs_rect.ys,
+                abs_rect.xe,
+                abs_rect.ye,
+                _ug2_progress_default_border_theme);
             d += 3;
         }
         else
-        {  /* 2D */
-            UG2_DrawFrame(abs_rect.xs, abs_rect.ys, abs_rect.xe, abs_rect.ye, pb->base_object.colors.foreground);
+        { /* 2D */
+            UG2_DrawFrame(
+                abs_rect.xs,
+                abs_rect.ys,
+                abs_rect.xe,
+                abs_rect.ye,
+                pb->base_object.colors.foreground);
             d += 1;
         }
 
@@ -44,37 +50,61 @@ static UG2_RESULT _UG2_ProgressHandleRedraw(UG2_PROGRESS* pb)
             if (pb->base_object.style & STYLE_BACKGROUND_MESH)
             {
                 // FIXME: Need fix, if start at 0, it is shifted 1 pixel right.
-                // Needed to match mesh pattern, otherwise it would "scroll right" 
-                if ((((abs_rect.xs + d) & 1) && (wps & 1)) || (!((abs_rect.xs + d) & 1) && !(wps & 1)))
+                // Needed to match mesh pattern, otherwise it would "scroll right"
+                if ((((abs_rect.xs + d) & 1) && (wps & 1)) ||
+                    (!((abs_rect.xs + d) & 1) && !(wps & 1)))
                     xs++;
 
-                UG2_DrawMesh(xs, abs_rect.ys + d, xe, abs_rect.ye - d, 2, pb->base_object.colors.foreground);
+                UG2_DrawMesh(
+                    xs,
+                    abs_rect.ys + d,
+                    xe,
+                    abs_rect.ye - d,
+                    2,
+                    pb->base_object.colors.foreground);
             }
             else
             {
-                UG2_FillFrame(xs, abs_rect.ys + d, xe, abs_rect.ye - d, pb->base_object.colors.background);
+                UG2_FillFrame(
+                    xs,
+                    abs_rect.ys + d,
+                    xe,
+                    abs_rect.ye - d,
+                    pb->base_object.colors.background);
             }
         }
 
         // Draw elapsed frame
         if (pb->progress > 0)
         {
-            UG2_FillFrame(abs_rect.xs + d, abs_rect.ys + d, abs_rect.xs + d + wps, abs_rect.ye - d, pb->base_object.colors.foreground);
+            UG2_FillFrame(
+                abs_rect.xs + d,
+                abs_rect.ys + d,
+                abs_rect.xs + d + wps,
+                abs_rect.ye - d,
+                pb->base_object.colors.foreground);
         }
     }
     else
     {
-        UG2_FillFrame(abs_rect.xs + d, abs_rect.ys + d, abs_rect.xe - d, abs_rect.ye - d, pb->base_object.colors.background);
+        /* invisible so fill it with the background color? */
+        UG2_FillFrame(
+            abs_rect.xs + d,
+            abs_rect.ys + d,
+            abs_rect.xe - d,
+            abs_rect.ye - d,
+            pb->base_object.colors.background);
     }
 
     return UG_RESULT_OK;
 }
 
-static UG2_RESULT _UG2_ProgressHandleMessage(UG2_MESSAGE* msg)
+static UG2_RESULT _UG2_ProgressHandleMessage(UG2_MESSAGE *msg)
 {
-    if (!msg || !msg->obj) return UG_RESULT_ARG;
+    if (!msg || !msg->obj)
+        return UG_RESULT_ARG;
 
-    UG2_PROGRESS* pb = UG2_CAST_OBJ_AS_PROGRESS(msg->obj);
+    UG2_PROGRESS *pb = UG2_CAST_OBJ_AS_PROGRESS(msg->obj);
 
     switch (msg->type)
     {
@@ -88,17 +118,19 @@ static UG2_RESULT _UG2_ProgressHandleMessage(UG2_MESSAGE* msg)
         /* set the progress */
     case MSG_PROGRESS_SET:
         pb->base_object.busy = 1;
-        if ((UG_U8)msg->data > 100) return UG_RESULT_ARG;
+        if ((UG_U8)msg->data > 100)
+            return UG_RESULT_ARG;
         pb->progress = (UG_U8)msg->data;
         pb->base_object.busy = 0;
         /* and redraw it ! */
         return UG2_SendMessage(msg->obj, MSG_REDRAW, 0, 0, 0, NULL);
-        
+
         /* get the progress */
     case MSG_PROGRESS_GET:
-        if (!msg->data) return UG_RESULT_ARG;
+        if (!msg->data)
+            return UG_RESULT_ARG;
         pb->base_object.busy = 1;
-        *(UG_U8*)msg->data = pb->progress;
+        *(UG_U8 *)msg->data = pb->progress;
         pb->base_object.busy = 0;
         return UG_RESULT_OK;
 
@@ -107,8 +139,9 @@ static UG2_RESULT _UG2_ProgressHandleMessage(UG2_MESSAGE* msg)
     }
 }
 
-UG2_RESULT UG2_ProgressInitialize(UG2_PROGRESS* pb,
-    UG2_OBJECT* parent,
+UG2_RESULT UG2_ProgressInitialize(
+    UG2_PROGRESS *pb,
+    UG2_OBJECT *parent,
     UG2_POS_T x,
     UG2_POS_T y,
     UG2_POS_T width,
@@ -125,7 +158,8 @@ UG2_RESULT UG2_ProgressInitialize(UG2_PROGRESS* pb,
         &_UG2_ProgressHandleMessage,
         OBJ_TYPE_WINDOW);
 
-    if (res != UG_RESULT_OK) return res;
+    if (res != UG_RESULT_OK)
+        return res;
 
     /* Initialize window */
     pb->base_object.user_handler = handle_message;
@@ -140,12 +174,12 @@ UG2_RESULT UG2_ProgressInitialize(UG2_PROGRESS* pb,
     return UG_RESULT_OK;
 }
 
-UG2_RESULT UG2_ProgressSetProgress(UG2_PROGRESS* pb, const UG_U8 progress)
+UG2_RESULT UG2_ProgressSetProgress(UG2_PROGRESS *pb, const UG_U8 progress)
 {
-    return UG2_SendMessage(UG2_BaseObject(pb), MSG_PROGRESS_SET, 0, 0, 0, (void*)progress);
+    return UG2_SendMessage(UG2_BaseObject(pb), MSG_PROGRESS_SET, 0, 0, 0, (void *)progress);
 }
 
-UG2_RESULT UG2_ProgressGetProgress(UG2_PROGRESS* pb, UG_U8* progress)
+UG2_RESULT UG2_ProgressGetProgress(UG2_PROGRESS *pb, UG_U8 *progress)
 {
-    return UG2_SendMessage(UG2_BaseObject(pb), MSG_PROGRESS_GET, 0, 0, 0, (void*)progress);
+    return UG2_SendMessage(UG2_BaseObject(pb), MSG_PROGRESS_GET, 0, 0, 0, (void *)progress);
 }
