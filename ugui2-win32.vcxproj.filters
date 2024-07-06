@@ -45,6 +45,15 @@
     <ClInclude Include="ugui2_window.h">
       <Filter>Archivos de origen</Filter>
     </ClInclude>
+    <ClInclude Include="ugui2_progress.h">
+      <Filter>Archivos de origen</Filter>
+    </ClInclude>
+    <ClInclude Include="ugui2_button.h">
+      <Filter>Archivos de origen</Filter>
+    </ClInclude>
+    <ClInclude Include="ugui2_checkbox.h">
+      <Filter>Archivos de origen</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ugui2-win32.c">
@@ -60,6 +69,15 @@
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="ugui2_window.c">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="ugui2_progress.c">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="ugui2_button.c">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="ugui2_checkbox.c">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
   </ItemGroup>

@@ -29,6 +29,38 @@
                                          C_BLACK,    \
                                          C_BLACK }
 
+#define C_PAL_BUTTON_PRESSED           /* Frame 0 */ \
+                                       { C_BLACK,    \
+                                        C_BLACK,     \
+                                        C_BLACK,     \
+                                        C_BLACK },   \
+                                       /* Frame 1 */ \
+                                       { C_BLACK,    \
+                                        C_BLACK,     \
+                                        C_WHITE,     \
+                                        C_WHITE },   \
+                                       /* Frame 2 */ \
+                                       { C_WHITE,    \
+                                        C_WHITE,     \
+                                        C_WHITE,     \
+                                        C_WHITE }
+
+#define C_PAL_BUTTON_RELEASED          /* Frame 0 */ \
+                                       { C_BLACK,    \
+                                         C_BLACK,    \
+                                         C_BLACK,    \
+                                         C_BLACK },  \
+                                       /* Frame 1 */ \
+                                       { C_WHITE,    \
+                                        C_WHITE,     \
+                                        C_BLACK,     \
+                                        C_BLACK },   \
+                                       /* Frame 2 */ \
+                                       { C_WHITE,    \
+                                        C_WHITE,     \
+                                        C_WHITE,     \
+                                        C_WHITE }
+
 #define C_DESKTOP_COLOR                C_WHITE
 #define C_FORE_COLOR                   C_BLACK
 #define C_BACK_COLOR                   C_WHITE
@@ -36,6 +68,12 @@
 #define C_TITLE_BACK_COLOR             C_BLACK
 #define C_INACTIVE_TITLE_FORE_COLOR    C_WHITE
 #define C_INACTIVE_TITLE_BACK_COLOR    C_BLACK
+
+#define C_PAL_PROGRESS                 C_PAL_BUTTON_RELEASED
+
+#define C_PAL_CHECKBOX_PRESSED         C_PAL_BUTTON_PRESSED
+#define C_PAL_CHECKBOX_RELEASED        C_PAL_BUTTON_RELEASED
+
 #else
 #define C_PAL_WINDOW                   /* Frame 0 */   \
                                        { C_WHITE_39,   \
@@ -52,6 +90,23 @@
                                          C_WHITE,      \
                                          C_WHITE_63,   \
                                          C_WHITE_63 }
+
+#define C_PAL_BUTTON_PRESSED           /* Frame 0 */ \
+                                       { C_WHITE_39, \
+                                        C_WHITE_39,  \
+                                        C_WHITE_39,  \
+                                        C_WHITE_39 },\
+                                       /* Frame 1 */ \
+                                       { C_WHITE_63, \
+                                        C_WHITE_63,  \
+                                        C_WHITE_63,  \
+                                        C_WHITE_63 },\
+                                       /* Frame 2 */ \
+                                       { C_WHITE_94, \
+                                        C_WHITE_94,  \
+                                        C_WHITE_94,  \
+                                        C_WHITE_94 }
+
 #define C_DESKTOP_COLOR                C_TEAL
 #define C_FORE_COLOR                   C_BLACK
 #define C_BACK_COLOR                   0xD0D0D0
@@ -60,6 +115,14 @@
 //#define C_TITLE_BACK_COLOR             0x000080
 #define C_INACTIVE_TITLE_FORE_COLOR    C_WHITE
 #define C_INACTIVE_TITLE_BACK_COLOR    C_GRAY
+
+#define C_PAL_BUTTON_RELEASED          C_PAL_WINDOW
+
+#define C_PAL_PROGRESS                 C_PAL_BUTTON_RELEASED
+
+#define C_PAL_CHECKBOX_PRESSED         C_PAL_BUTTON_PRESSED
+#define C_PAL_CHECKBOX_RELEASED        C_PAL_BUTTON_RELEASED
+
 #endif
 
 

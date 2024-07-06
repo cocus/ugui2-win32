@@ -16,11 +16,11 @@ static UG2_RESULT _UG2_WindowDrawTitle(UG2_WINDOW* wnd)
     if (wnd == NULL) return UG_RESULT_ARG;
 
     UG2_PosFromRect(
-        &UG2_CAST_WINDOW_AS_OBJ(wnd)->rect,
+        &UG2_BaseObject(wnd)->rect,
         xs, ys, xe, ye);
 
     /* 3D style? */
-    if (UG2_CAST_WINDOW_AS_OBJ(wnd)->style & STYLE_3D)
+    if (UG2_BaseObject(wnd)->style & STYLE_3D)
     {
         xs += 3;
         ys += 3;
@@ -29,7 +29,7 @@ static UG2_RESULT _UG2_WindowDrawTitle(UG2_WINDOW* wnd)
     }
 
     /* Is the window active or inactive? */
-    if (UG2_CAST_WINDOW_AS_OBJ(wnd)->style & STYLE_FOCUSED)
+    if (UG2_BaseObject(wnd)->style & STYLE_FOCUSED)
     {
         txt.colors = wnd->title.colors_active;
     }
@@ -38,12 +38,25 @@ static UG2_RESULT _UG2_WindowDrawTitle(UG2_WINDOW* wnd)
         txt.colors = wnd->title.colors_inactive;
     }
 
-    /* Draw title */
-    UG2_FillFrame(xs, ys, xe, ys + wnd->title.height - 1, txt.colors.background);
+    if (UG2_BaseObject(wnd)->style & STYLE_BACKGROUND_MESH)
+    {
+        /* Draw mesh title background */
+        UG2_DrawMesh(xs, ys, xe, ys + wnd->title.height - 1, 4, txt.colors.background);
+    }
+    else if (UG2_BaseObject(wnd)->style & STYLE_BACKGROUND_BLEND)
+    {
+        /* TBD */
+    }
+    else
+    {
+        /* Draw solid title background */
+        UG2_FillFrame(xs, ys, xe, ys + wnd->title.height - 1, txt.colors.background);
+    }
+
 
     /* Draw title text */
-    txt.str = wnd->title.str;
-    txt.font = wnd->title.font;
+    txt.str = wnd->base_object.text;
+    txt.font = wnd->base_object.font;
     txt.area.xs = xs + 3;
     txt.area.ys = ys;
     txt.area.xe = xe;
@@ -66,13 +79,12 @@ static UG2_RESULT _UG2_WindowDrawTitle(UG2_WINDOW* wnd)
 
 static UG2_RESULT _UG2_WindowHandleRedraw(UG2_WINDOW* wnd)
 {
-    size_t i, objcnt;
     UG2_POS_T xs, ys, xe, ye;
 
     if (wnd == NULL) return UG_RESULT_ARG;
 
     UG2_PosFromRect(
-        &UG2_CAST_WINDOW_AS_OBJ(wnd)->rect,
+        &UG2_BaseObject(wnd)->rect,
         xs, ys, xe, ye);
 
     /* Is the window visible? */
@@ -97,18 +109,10 @@ static UG2_RESULT _UG2_WindowHandleRedraw(UG2_WINDOW* wnd)
 
         /* Draw window area? */
         UG2_FillFrame(xs, ys, xe, ye, wnd->base_object.colors.background);
-
-        /* Force each object to be redrawn! */
-        objcnt = wnd->base_object.child_cnt;
-        for (i = 0; i < objcnt; i++)
-        {
-            UG2_SendMessage(&wnd->base_object.child[i], MSG_REDRAW, 0, 0, 0, NULL);
-        }
     }
     else
     {
         UG2_FillFrame(wnd->base_object.rect.xs, wnd->base_object.rect.xs, wnd->base_object.rect.xe, wnd->base_object.rect.ye, UG2_GuiGetDesktopColor());
-        // TODO: probably we should re-paint all objects as well
     }
 
     return UG_RESULT_OK;
@@ -119,17 +123,7 @@ static UG2_RESULT _UG2_WindowHandleMessage(UG2_MESSAGE* msg)
     if (!msg || !msg->obj) return UG_RESULT_ARG;
 
     UG2_WINDOW* wnd = UG2_CAST_OBJ_AS_WINDOW(msg->obj);
-    UG2_RESULT res;
-
-    if (msg->obj->user_handler)
-    {
-        wnd->base_object.busy = 1;
-        res = msg->obj->user_handler(msg);
-        wnd->base_object.busy = 0;
-
-        if (res != UG_RESULT_MSG_UNHANDLED)
-            return res;
-    }
+    UG2_RECT* rect = (UG2_RECT*)msg->data;
 
     switch (msg->type)
     {
@@ -137,37 +131,6 @@ static UG2_RESULT _UG2_WindowHandleMessage(UG2_MESSAGE* msg)
     case MSG_REDRAW:
         wnd->base_object.busy = 1;
         _UG2_WindowHandleRedraw(wnd);
-        wnd->base_object.busy = 0;
-        return UG_RESULT_OK;
-
-        /* set text (titlebar) */
-    case MSG_TEXT_SET:
-        wnd->base_object.busy = 1;
-        wnd->title.str = (const char*)msg->data;
-        wnd->base_object.busy = 0;
-        /* and redraw it ! */
-        return UG2_SendMessage(UG2_CAST_WINDOW_AS_OBJ(wnd), MSG_REDRAW, 0, 0, 0, NULL);
-
-        /* get text (titlebar) */
-    case MSG_TEXT_GET:
-        wnd->base_object.busy = 1;
-        (const char*)msg->data = wnd->title.str;
-        wnd->base_object.busy = 0;
-        return UG_RESULT_OK;
-
-        /* set text font (titlebar) */
-    case MSG_FONT_SET:
-        wnd->base_object.busy = 1;
-        wnd->title.font = (UG2_FONT*)msg->data;
-        wnd->base_object.busy = 0;
-        /* and redraw it ! */
-        return UG2_SendMessage(UG2_CAST_WINDOW_AS_OBJ(wnd), MSG_REDRAW, 0, 0, 0, NULL);
-
-
-        /* get text font (titlebar) */
-    case MSG_FONT_GET:
-        wnd->base_object.busy = 1;
-        (UG2_FONT*)msg->data = wnd->title.font;
         wnd->base_object.busy = 0;
         return UG_RESULT_OK;
 
@@ -180,7 +143,7 @@ static UG2_RESULT _UG2_WindowHandleMessage(UG2_MESSAGE* msg)
         else
             return UG_RESULT_ARG;
         /* and redraw it ! */
-        return UG2_SendMessage(UG2_CAST_WINDOW_AS_OBJ(wnd), MSG_REDRAW, 0, 0, 0, NULL);
+        return UG2_SendMessage(UG2_BaseObject(wnd), MSG_REDRAW, 0, 0, 0, NULL);
 
         /* get the titlebar colors */
     case MSG_TITLEBAR_COLOR_GET:
@@ -192,20 +155,25 @@ static UG2_RESULT _UG2_WindowHandleMessage(UG2_MESSAGE* msg)
             return UG_RESULT_ARG;
         return UG_RESULT_OK;
 
-        /* make this object visible & repaint */
-    case MSG_SHOW:
-        wnd->base_object.busy = 1;
-        wnd->base_object.style |= STYLE_VISIBLE;
-        wnd->base_object.busy = 0;
-        /* and redraw it ! */
-        return UG2_SendMessage(UG2_CAST_WINDOW_AS_OBJ(wnd), MSG_REDRAW, 0, 0, 0, NULL);
+        /* get the client rect */
+    case MSG_CLIENTRECT:
+        if (rect == NULL) return UG_RESULT_ARG;
 
-        /* make this object invisible & repaint */
-    case MSG_HIDE:
-        wnd->base_object.busy = 1;
-        wnd->base_object.style &= ~STYLE_VISIBLE;
-        wnd->base_object.busy = 0;
-        return UG2_SendMessage(UG2_CAST_WINDOW_AS_OBJ(wnd), MSG_REDRAW, 0, 0, 0, NULL);
+        *rect = wnd->base_object.rect;
+
+        if (wnd->base_object.style & STYLE_3D)
+        {
+            rect->xs += 3;
+            rect->ys += 3;
+            rect->xe -= 3;
+            rect->ye -= 3;
+        }
+
+        if (wnd->base_object.style & STYLE_TITLEBAR)
+        {
+            rect->ys += wnd->title.height + 1;
+        }
+        return UG_RESULT_OK;
 
     default:
         return UG_RESULT_MSG_UNHANDLED;
@@ -221,7 +189,7 @@ UG2_RESULT UG2_WindowInitialize(UG2_WINDOW* wnd,
     UG2_HandleMessage handle_message)
 {
     UG2_RESULT res = UG2_GenericObjectInitialize(
-        UG2_CAST_WINDOW_AS_OBJ(wnd),
+        UG2_BaseObject(wnd),
         parent,
         x,
         y,
@@ -241,10 +209,10 @@ UG2_RESULT UG2_WindowInitialize(UG2_WINDOW* wnd,
         STYLE_ENABLED |
         STYLE_TITLEBAR |
         STYLE_3D |
+        STYLE_CAN_FOCUS |
         (UG2_GuiGetActiveWindow() == NULL ? STYLE_FOCUSED : STYLE_UNFOCUSED);
 
     /* Initialize window title-bar */
-    wnd->title.str = NULL;
     wnd->title.h_space = 2;
     wnd->title.v_space = 2;
     wnd->title.align = ALIGN_CENTER_LEFT;
@@ -255,27 +223,9 @@ UG2_RESULT UG2_WindowInitialize(UG2_WINDOW* wnd,
     wnd->title.height = 15;
 
     /* if no windows are created, make this one the active window */
-    if (parent == NULL) UG2_GuiSetActiveWindow(UG2_CAST_WINDOW_AS_OBJ(wnd));
+    if (parent == NULL) UG2_GuiSetActiveWindow(UG2_BaseObject(wnd));
 
     return UG_RESULT_OK;
-}
-
-UG2_RESULT UG2_WindowShow(UG2_WINDOW* wnd)
-{
-    if (wnd == NULL) return UG_RESULT_ARG;
-    return UG2_SendMessage(UG2_CAST_WINDOW_AS_OBJ(wnd), MSG_SHOW, 0, 0, 0, NULL);
-}
-
-UG2_RESULT UG2_WindowSetTitleText(UG2_WINDOW* wnd, const char* str)
-{
-    if (wnd == NULL) return UG_RESULT_ARG;
-    return UG2_SendMessage(UG2_CAST_WINDOW_AS_OBJ(wnd), MSG_TEXT_SET, 0, 0, 0, (void*)str);
-}
-
-UG2_RESULT UG2_WindowSetTitleFont(UG2_WINDOW* wnd, UG2_FONT* font)
-{
-    if (wnd == NULL) return UG_RESULT_ARG;
-    return UG2_SendMessage(UG2_CAST_WINDOW_AS_OBJ(wnd), MSG_FONT_SET, 0, 0, 0, (void*)font);
 }
 
 // TODO: colos for titlebar, etc

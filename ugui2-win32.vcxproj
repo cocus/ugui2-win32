@@ -132,8 +132,11 @@
     <ClInclude Include="targetver.h" />
     <ClInclude Include="ugui2-win32.h" />
     <ClInclude Include="ugui2.h" />
+    <ClInclude Include="ugui2_button.h" />
+    <ClInclude Include="ugui2_checkbox.h" />
     <ClInclude Include="ugui2_colors.h" />
     <ClInclude Include="ugui2_config.h" />
+    <ClInclude Include="ugui2_progress.h" />
     <ClInclude Include="ugui2_queue.h" />
     <ClInclude Include="ugui2_fonts.h" />
     <ClInclude Include="ugui2_window.h" />
@@ -142,6 +145,9 @@
     <ClCompile Include="font_6x8.c" />
     <ClCompile Include="ugui2-win32.c" />
     <ClCompile Include="ugui2.c" />
+    <ClCompile Include="ugui2_button.c" />
+    <ClCompile Include="ugui2_checkbox.c" />
+    <ClCompile Include="ugui2_progress.c" />
     <ClCompile Include="ugui2_queue.c" />
     <ClCompile Include="ugui2_window.c" />
   </ItemGroup>

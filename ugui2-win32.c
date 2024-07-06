@@ -10,6 +10,9 @@
 #include "ugui2.h"
 #include "ugui2_fonts.h"
 #include "ugui2_window.h"
+#include "ugui2_progress.h"
+#include "ugui2_button.h"
+#include "ugui2_checkbox.h"
 
 #define MAX_LOADSTRING 100
 
@@ -185,13 +188,13 @@ UG2_DEVICE device;
 
 
 UG2_WINDOW wnd;
-//UG_PROGRESS pgb0;
-
-/*UG_BUTTON btn0;
+UG2_PROGRESS pgb0;
+UG2_BUTTON btn0;
+UG2_CHECKBOX chb0;
+/*
 UG_BUTTON btn1;
 UG_BUTTON btn2;
 UG_BUTTON btn3;
-UG_CHECKBOX chb0;
 UG_CHECKBOX chb1;
 UG_CHECKBOX chb2;
 UG_CHECKBOX chb3;
@@ -209,80 +212,61 @@ UG2_OBJECT objs[MAX_OBJS];
 #define CHB_HEIGHT 14
 
 #define OBJ_Y(i) BTN_HEIGHT *i + ((i + 1))
-void windowHandler(UG2_MESSAGE* msg)
+UG2_RESULT btn_handler(UG2_MESSAGE* msg)
 {
-    static UG_U16 x0, y0;
+    if (!msg) return UG_RESULT_ARG;
 
-    (void)x0;
-    (void)y0;
-
-    // decode_msg(msg);
-}
-#if 0
-
-#if defined(UGUI_USE_TOUCH)
-    if (msg->type == MSG_TYPE_OBJECT)
+    if (msg->obj == UG2_BaseObject(&btn0))
     {
-        UG_OBJECT* obj = msg->src;
-        if (obj)
+        UG_U8 pb = 0;
+        if (msg->type == MSG_TOUCH_UP)
         {
-            if (obj->touch_state & OBJ_TOUCH_STATE_CHANGED)
-                printf("|CHANGED");
-            if (obj->touch_state & OBJ_TOUCH_STATE_PRESSED_ON_OBJECT)
-                printf("|PRESSED_ON_OBJECT");
-            if (obj->touch_state & OBJ_TOUCH_STATE_PRESSED_OUTSIDE_OBJECT)
-                printf("|PRESSED_OUTSIDE_OBJECT");
-            if (obj->touch_state & OBJ_TOUCH_STATE_RELEASED_ON_OBJECT)
-                printf("|RELEASED_ON_OBJECT");
-            if (obj->touch_state & OBJ_TOUCH_STATE_RELEASED_OUTSIDE_OBJECT)
-                printf("|RELEASED_OUTSIDE_OBJECT");
-            if (obj->touch_state & OBJ_TOUCH_STATE_IS_PRESSED_ON_OBJECT)
-                printf("|IS_PRESSED_ON_OBJECT");
-            if (obj->touch_state & OBJ_TOUCH_STATE_IS_PRESSED)
-                printf("|IS_PRESSED");
-            if (obj->touch_state & OBJ_TOUCH_STATE_INIT)
-                printf("|INIT");
-            printf("\n");
-            if (obj->touch_state & OBJ_TOUCH_STATE_IS_PRESSED)
+            UG2_ProgressGetProgress(&pgb0, &pb);
+
+            if (++pb == 101)
             {
-                x0 = UG_GetGUI()->touch.xp;
-                y0 = UG_GetGUI()->touch.yp;
+                pb = 0;
             }
+
+            UG2_ProgressSetProgress(&pgb0, pb);
         }
-
-        if (UG_ProgressGetProgress(&wnd, PGB_ID_0) == 100)
-            UG_ProgressSetProgress(&wnd, PGB_ID_0, 0);
-        else
-            UG_ProgressSetProgress(&wnd, PGB_ID_0, UG_ProgressGetProgress(&wnd, PGB_ID_0) + 1);
-
-        if (UG_ProgressGetProgress(&wnd, PGB_ID_1) == 100)
-            UG_ProgressSetProgress(&wnd, PGB_ID_1, 0);
-        else
-            UG_ProgressSetProgress(&wnd, PGB_ID_1, UG_ProgressGetProgress(&wnd, PGB_ID_1) + 1);
     }
-#endif
+
+    return UG_RESULT_MSG_UNHANDLED;
 }
-#endif
 char buffer[64] = { '\0' };
 
 void GUI_DemoSetup(UG2_DEVICE* device)
 {
     // Setup Window
-    UG2_WindowInitialize(&wnd, NULL, 120, 0, (640-120), 200, windowHandler);
-    UG2_WindowSetTitleFont(&wnd, FONT_6X8);
-    UG2_WindowSetTitleText(&wnd, "uGUI2 - Window Title!");
+    UG2_WindowInitialize(&wnd, NULL, 120, 0, (640-120), 200, NULL);
+    UG2_ObjectSetFont(UG2_BaseObject(&wnd), FONT_6X8);
+    UG2_ObjectSetText(UG2_BaseObject(&wnd), "uGUI2 - Window Title!");
+    UG2_ShowObject(UG2_BaseObject(&wnd));
 
     // Progress Bar
-    //UG_ProgressCreate(&wnd, &pgb0, PGB_ID_0, UGUI_POS(INITIAL_MARGIN, OBJ_Y(4) + 20, 157, 20));
-    //UG_ProgressSetProgress(&wnd, PGB_ID_0, 50);
-    //UG_ProgressSetForeColor(&wnd, PGB_ID_0, C_LIGHT_GREEN);
-#if 0
+    UG2_ProgressInitialize(&pgb0, UG2_BaseObject(&wnd), 10, 10, 80, 20, NULL);
+#ifndef UGUI2_USE_COLOR_BW
+    UG2_ObjectSetForeColor(UG2_BaseObject(&pgb0), C_DARK_BLUE);
+#endif
+    UG2_ProgressSetProgress(&pgb0, 50);
+    UG2_ShowObject(UG2_BaseObject(&pgb0));
 
     // Buttons
-    UG_ButtonCreate(&wnd, &btn0, BTN_ID_0, UGUI_POS(INITIAL_MARGIN, OBJ_Y(0), BTN_WIDTH, BTN_HEIGHT));
-    UG_ButtonSetFont(&wnd, BTN_ID_0, FONT_6X8);
-    UG_ButtonSetText(&wnd, BTN_ID_0, "Btn 3D");
-    UG_ButtonSetStyle(&wnd, BTN_ID_0, BTN_STYLE_3D);
+    UG2_ButtonInitialize(&btn0, UG2_BaseObject(&wnd), 10, 35, 80, 40, btn_handler);
+    UG2_ObjectSetFont(UG2_BaseObject(&btn0), FONT_6X8);
+    UG2_ObjectSetText(UG2_BaseObject(&btn0), "Button!");
+    UG2_ShowObject(UG2_BaseObject(&btn0));
+
+    UG2_CheckboxInitialize(&chb0, UG2_BaseObject(&wnd), 10, 80, 80, CHB_HEIGHT, NULL);
+    UG2_ObjectSetFont(UG2_BaseObject(&chb0), FONT_6X8);
+    UG2_ObjectSetText(UG2_BaseObject(&chb0), "Checkbox");
+    UG2_ShowObject(UG2_BaseObject(&chb0));
+
+
+#if 0
+
+
 
     UG_OBJECT* obj = _UG_SearchObject(&wnd, OBJ_TYPE_BUTTON, BTN_ID_0);
     UG_SetFocus(obj);
@@ -375,7 +359,6 @@ void GUI_DemoSetup(UG2_DEVICE* device)
     UG_ProgressSetStyle(&wnd, PGB_ID_1, PGB_STYLE_2D | PGB_STYLE_FORE_COLOR_MESH);
     UG_ProgressSetProgress(&wnd, PGB_ID_1, 75);
 #endif
-    UG2_WindowShow(&wnd);
 }
 
 void GUI_Process()
@@ -476,12 +459,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
     case WM_LBUTTONDOWN:
     {
+        UG2_POINT p = { .x = GET_X_LPARAM(lParam), .y = GET_Y_LPARAM(lParam) };
+        UG2_SystemSendMessage(MSG_TOUCH_DOWN, UG2_TOUCH_ID_MAIN, 0, 0, &p);
         //UG_TouchUpdate(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), TOUCH_STATE_PRESSED);
         break;
     }
 
     case WM_LBUTTONUP:
     {
+        UG2_POINT p = { .x = GET_X_LPARAM(lParam), .y = GET_Y_LPARAM(lParam) };
+        UG2_SystemSendMessage(MSG_TOUCH_UP, UG2_TOUCH_ID_MAIN, 0, 0, &p);
         //UG_TouchUpdate(-1, -1, TOUCH_STATE_RELEASED);
         break;
     }

@@ -9,7 +9,7 @@
 /* -------------------------------------------------------------------------------- */
 typedef struct S_OBJECT                               UG2_OBJECT;
 typedef UG_S8                                         UG2_RESULT;
-
+typedef UG_U8                                         UG2_BOOL;
 #if defined(UGUI2_USE_COLOR_RGB888)
 typedef UG_U32                       UG2_COLOR;
 #elif defined(UGUI2_USE_COLOR_RGB565)
@@ -35,7 +35,10 @@ typedef UG_U8                        UG2_COLOR;
 #define UG2_GetFontHeight(f)                            *(f+2)
 #define UG2_swap(x, y)                                  { x = y^x; y = x ^ y; x = y ^ x; }
 #define UG2_RectFromDims(r,x,y,w,h)                     { (r)->xs = x; (r)->ys = y; (r)->xe = x + w; (r)->ye = y + h; }
-#define UG2_PosFromRect(r,xs,ys,xe,ye)                  { xs = (r)->xs; ys = (r)->ys; xe = (r)->xe; ye = (r)->ye; }
+#define UG2_PosFromRect(r,_xs,_ys,_xe,_ye)              { _xs = (r)->xs; _ys = (r)->ys; _xe = (r)->xe; _ye = (r)->ye; }
+
+#define UG2_BaseObject(obj)                             ((UG2_OBJECT*)(obj))
+
 
 /* Sizing helpers */
 #define UG2_SizeToPos(xs, ys, w, h)                     xs, ys, xs+w, ys+h
@@ -60,6 +63,15 @@ typedef UG_U8                        UG2_COLOR;
 /* Color scheme indices */
 #define UG2_COLORS_ACTIVE   0
 #define UG2_COLORS_INACTIVE 1
+
+/* Touch/Button types */
+#define UG2_TOUCH_ID_MAIN 0
+#define UG2_TOUCH_ID_SECONDARY 1
+#define UG2_TOUCH_ID_TERTIARY 2
+
+/* Message ordering */
+#define UG2_MSG_BEFORE 0
+#define UG2_MSG_AFTER 1
 
 /* -------------------------------------------------------------------------------- */
 /* -- FUNCTION RESULTS                                                           -- */
@@ -126,6 +138,13 @@ typedef const struct
 /* -------------------------------------------------------------------------------- */
 /* -- UNIVERSAL STRUCTURES                                                       -- */
 /* -------------------------------------------------------------------------------- */
+
+typedef struct
+{
+    UG2_POS_T x;
+    UG2_POS_T y;
+} UG2_POINT;
+
 /* Area structure */
 typedef struct
 {
@@ -183,14 +202,31 @@ typedef enum
     MSG_FOCUS_LOST,
     MSG_ENABLE,
     MSG_DISABLE,
+    MSG_STYLE_SET,
+    MSG_STYLE_GET,
+    MSG_COLOR_FORE_SET,
+    MSG_COLOR_FORE_GET,
+    MSG_COLOR_BACK_SET,
+    MSG_COLOR_BACK_GET,
     MSG_TEXT_SET,
     MSG_TEXT_GET,
     MSG_SHOW,
     MSG_HIDE,
     MSG_FONT_SET,
     MSG_FONT_GET,
+
+    MSG_TOUCH_DOWN,
+    MSG_TOUCH_UP,
+    MSG_KEY_DOWN,
+    MSG_KEY_UP,
+
+    MSG_CLIENTRECT,
+
     MSG_TITLEBAR_COLOR_SET,
     MSG_TITLEBAR_COLOR_GET,
+
+    MSG_PROGRESS_SET,
+    MSG_PROGRESS_GET,
 } UG2_MESSAGE_TYPE;
 
 typedef struct
@@ -230,11 +266,22 @@ typedef enum
     STYLE_UNFOCUSED = (0 << 2),
     STYLE_FOCUSED   = (1 << 2),
 
-    STYLE_NO_TITLEBAR = (0 << 3),
-    STYLE_TITLEBAR    = (1 << 3),
+    STYLE_CANT_FOCUS = (0 << 3),
+    STYLE_CAN_FOCUS  = (1 << 3),
 
-    STYLE_FLAT = (0 << 4),
-    STYLE_3D   = (1 << 4),
+    STYLE_NO_TITLEBAR = (0 << 4),
+    STYLE_TITLEBAR    = (1 << 4),
+
+    STYLE_FLAT = (0 << 5),
+    STYLE_3D   = (1 << 5),
+
+    STYLE_BACKGROUND_SOLID = (0 << 6),
+    STYLE_BACKGROUND_MESH  = (1 << 6),
+    
+
+    STYLE_BACKGROUND_SOLID2 = (0 << 7),
+    STYLE_BACKGROUND_BLEND  = (1 << 7), /* requires STYLE_BACKGROUND_SOLID to be set */
+
 
 } UG2_STYLE_TYPES;
 
@@ -244,16 +291,25 @@ struct S_OBJECT
 {
     UG_U32 style; /* see UG2_STYLE_TYPES for base style types */
     UG2_COLOR_FORE_BACK colors;
+    UG2_COLOR_FORE_BACK colors_inactive;
+
+    UG2_FONT* font;
+    const char* text;
+    UG2_POS_T text_h_space;
+    UG2_POS_T text_v_space;
+    UG_U8 text_align;
 
     UG2_RECT rect;                            /* absolute area of the object                */
+    UG2_RECT client_rect;                            /* absolute area of the object                */
 
     UG2_OBJECT_TYPES_TYPE type;                               /* object type                                */
     UG_U8 id;                                 /* object ID                                  */
 
     UG_U8 busy;
     UG2_OBJECT* parent;
+    UG2_OBJECT* next; /* list of children, if any */
     UG2_OBJECT* child; /* list of children, if any */
-    size_t child_cnt;
+    
     UG2_OBJECT* focused_child; /* focused children, if any */
 
     UG2_HandleMessage handle_message;   /* pointer to object-specific update function */
@@ -261,7 +317,7 @@ struct S_OBJECT
 
 };
 
-#define UG2_TYPEDEF_OBJ_INHERITT      UG2_OBJECT base_object; /* this is an object after all */
+#define UG2_TYPEDEF_OBJ_INHERITT      UG2_OBJECT base_object /* this is an object after all */
 
 
 /* -------------------------------------------------------------------------------- */
@@ -334,6 +390,9 @@ void UG2_GuiSetActiveWindow(UG2_OBJECT* wnd);
 void UG2_FillScreen(UG2_COLOR c);
 void UG_DrawLine(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, const UG2_COLOR c);
 void UG2_Draw3DObjectFrame(UG2_POS_T xs, UG2_POS_T ys, UG2_POS_T xe, UG2_POS_T ye, const UG2_COLOR_RECT* frame_colors);
+void UG2_DrawMesh(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, UG2_POS_T spacing, UG2_COLOR c);
+void UG2_DrawFrame(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, const UG2_COLOR c);
+void UG2_DrawDottedFrame(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, UG2_POS_T spacing, const UG2_COLOR c);
 void UG2_FillFrame(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, const UG2_COLOR c);
 
 
@@ -350,5 +409,23 @@ UG2_RESULT UG2_GenericObjectInitialize(
     UG2_OBJECT_TYPES_TYPE type);
 
 
+UG2_RESULT UG2_ObjectSetForeColor(UG2_OBJECT* obj, const UG2_COLOR c);
+UG2_RESULT UG2_ObjectGetForeColor(UG2_OBJECT* obj, UG2_COLOR* c);
+
+UG2_RESULT UG2_ObjectSetBackColor(UG2_OBJECT* obj, const UG2_COLOR c);
+UG2_RESULT UG2_ObjectGetBackColor(UG2_OBJECT* obj, UG2_COLOR* c);
+
+UG2_RESULT UG2_ObjectSetText(UG2_OBJECT* obj, const char* str);
+UG2_RESULT UG2_ObjectSetFont(UG2_OBJECT* obj, UG2_FONT* font);
+
+UG2_RESULT UG2_ObjectSetTextAlign(UG2_OBJECT* obj, const char* str);
+UG2_RESULT UG2_ObjectSetFont(UG2_OBJECT* obj, UG2_FONT* font);
+
+UG2_RESULT UG2_SetParent(UG2_OBJECT* new_parent, UG2_OBJECT* obj);
+
+UG2_RESULT UG2_GetObjectScreenRect(UG2_OBJECT* obj, UG2_RECT* rect);
+
+UG2_RESULT UG2_SystemSendMessage(UG_U16 type, UG_U8 id, UG_U8 sub_id, UG_U8 event, void* data);
+UG2_RESULT UG2_ShowObject(UG2_OBJECT* obj);
 UG2_RESULT UG2_SendMessage(UG2_OBJECT* obj, UG_U16 type, UG_U8 id, UG_U8 sub_id, UG_U8 event, void* data);
 UG2_RESULT UG2_Init(UG2_DEVICE* device);

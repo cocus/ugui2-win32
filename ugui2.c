@@ -624,6 +624,79 @@ void UG2_Draw3DObjectFrame(UG2_POS_T xs, UG2_POS_T ys, UG2_POS_T xe, UG2_POS_T y
 }
 
 
+void UG2_DrawMesh(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, UG2_POS_T spacing, UG2_COLOR c)
+{
+    UG2_POS_T p;
+
+    if (x2 < x1)
+        UG2_swap(x1, x2);
+    if (y2 < y1)
+        UG2_swap(y1, y2);
+
+    for (p = y1; p < y2; p += spacing)
+    {
+        UG_DrawLine(x1, p, x2, p, c);
+    }
+    UG_DrawLine(x1, y2, x2, y2, c);
+
+    for (p = x1; p < x2; p += spacing)
+    {
+        UG_DrawLine(p, y1, p, y2, c);
+    }
+    UG_DrawLine(x2, y1, x2, y2, c);
+}
+
+void UG2_DrawFrame(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, const UG2_COLOR c)
+{
+    UG_DrawLine(x1, y1, x2, y1, c);
+    UG_DrawLine(x1, y2, x2, y2, c);
+    UG_DrawLine(x1, y1, x1, y2, c);
+    UG_DrawLine(x2, y1, x2, y2, c);
+}
+
+static void drawDottedLine(UG2_POS_T x0, UG2_POS_T y0, UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T dotLength, UG2_POS_T spaceLength, const UG2_COLOR c) {
+    int dx = abs(x1 - x0);
+    int dy = abs(y1 - y0);
+    int sx = (x0 < x1) ? 1 : -1;
+    int sy = (y0 < y1) ? 1 : -1;
+    int err = dx - dy;
+    int dotCount = 0;
+    int drawDot = 1;
+
+    while (1) {
+        if (drawDot) {
+            _gui.device->pset(x0, y0, c);
+        }
+        dotCount++;
+
+        if (dotCount == dotLength) {
+            dotCount = 0;
+            drawDot = !drawDot;
+        }
+
+        if (x0 == x1 && y0 == y1) break;
+        int e2 = 2 * err;
+        if (e2 > -dy) {
+            err -= dy;
+            x0 += sx;
+        }
+        if (e2 < dx) {
+            err += dx;
+            y0 += sy;
+        }
+    }
+}
+
+void UG2_DrawDottedFrame(UG2_POS_T x1, UG2_POS_T y1, UG2_POS_T x2, UG2_POS_T y2, UG2_POS_T spacing, const UG2_COLOR c)
+{
+    drawDottedLine(x1, y1, x2, y1, spacing, 1, c);
+    drawDottedLine(x1, y2, x2, y2, spacing, 1, c);
+    drawDottedLine(x1, y1, x1, y2, spacing, 1, c);
+    drawDottedLine(x2, y1, x2, y2, spacing, 1, c);
+}
+
+
+
 
 
 UG2_RESULT UG2_GenericObjectInitialize(
@@ -644,25 +717,416 @@ UG2_RESULT UG2_GenericObjectInitialize(
 
     obj->colors.foreground = C_FORE_COLOR;
     obj->colors.background = C_BACK_COLOR;
-    obj->parent = parent;
+    obj->colors_inactive.foreground = C_FORE_COLOR;
+    obj->colors_inactive.background = C_BACK_COLOR;
+    obj->parent = NULL;
     obj->child = NULL;
-    obj->child_cnt = 0;
+    obj->next = NULL;
     obj->focused_child = NULL;
+    obj->font = NULL;
+    obj->text = NULL;
+
+    obj->text_h_space = 2;
+    obj->text_v_space = 2;
+    obj->text_align = ALIGN_CENTER_LEFT;
 
     obj->handle_message = handle_message;
     obj->type = type;
     obj->style = STYLE_DISABLED | STYLE_HIDDEN;
 
+    if (parent)
+    {
+        if (parent == obj)
+        {
+            return UG_RESULT_ARG;
+        }
+
+        return UG2_SetParent(parent, obj);
+    }
+
     return UG_RESULT_OK;
 }
 
 
+UG2_RESULT UG2_ObjectSetForeColor(UG2_OBJECT* obj, const UG2_COLOR c)
+{
+    return UG2_SendMessage(obj, MSG_COLOR_FORE_SET, 0, 0, 0, (void*)c);
+}
+UG2_RESULT UG2_ObjectGetForeColor(UG2_OBJECT* obj, UG2_COLOR* c)
+{
+    return UG2_SendMessage(obj, MSG_COLOR_FORE_GET, 0, 0, 0, (void*)c);
+}
+UG2_RESULT UG2_ObjectSetBackColor(UG2_OBJECT* obj, const UG2_COLOR c)
+{
+    return UG2_SendMessage(obj, MSG_COLOR_BACK_SET, 0, 0, 0, (void*)c);
+}
+UG2_RESULT UG2_ObjectGetBackColor(UG2_OBJECT* obj, UG2_COLOR* c)
+{
+    return UG2_SendMessage(obj, MSG_COLOR_BACK_GET, 0, 0, 0, (void*)c);
+}
+UG2_RESULT UG2_ObjectSetText(UG2_OBJECT* obj, const char* str)
+{
+    return UG2_SendMessage(obj, MSG_TEXT_SET, 0, 0, 0, (void*)str);
+}
+UG2_RESULT UG2_ObjectSetFont(UG2_OBJECT* obj, UG2_FONT* font)
+{
+    return UG2_SendMessage(obj, MSG_FONT_SET, 0, 0, 0, (void*)font);
+}
+
+UG2_RESULT UG2_SetParent(UG2_OBJECT* new_parent, UG2_OBJECT* obj)
+{
+    UG2_OBJECT* o = NULL;
+    if (obj == NULL) return UG_RESULT_ARG;
+
+    if (obj->parent)
+    {
+        /* this object is already a child of another object */
+        for (o = obj->parent->child; o != NULL; o = o->next)
+        {
+            if (o->next == obj)
+            {
+                o->next = obj->next;
+                obj->parent = NULL;
+                goto setnew;
+            }
+        }
+        return UG_RESULT_FAIL;
+    }
+
+setnew:
+    
+    /* this object is already a child of another object */
+    if (new_parent->child)
+    {
+        for (o = new_parent->child; o != NULL; o = o->next)
+        {
+            if (o->next == NULL)
+            {
+                o->next = obj;
+                goto setpar;
+            }
+        }
+        return UG_RESULT_FAIL;
+    }
+    else
+    {
+        new_parent->child = obj;
+    }
+
+ setpar:
+    obj->next = NULL; /* just in case */
+    obj->parent = new_parent;
+
+
+    return UG_RESULT_OK;
+}
+
+UG2_RESULT UG2_GetObjectScreenRect(UG2_OBJECT* obj, UG2_RECT* rect)
+{
+    UG2_RECT screen = { 0, 0, 0, 0 };
+    UG2_RECT r = { 0, 0, 0, 0 };
+    UG2_OBJECT* parent = NULL;
+    UG2_RESULT res;
+
+    if (!obj || !rect) return UG_RESULT_ARG;
+
+    UG2_RectFromDims(
+        rect,
+        0, 0, 0, 0);
+
+    /* get current obj client rect */
+    res = UG2_SendMessage(obj, MSG_CLIENTRECT, 0, 0, 0, (void*)rect);
+
+    for (parent = obj->parent; parent != NULL; parent = parent->parent)
+    {
+        res = UG2_SendMessage(parent, MSG_CLIENTRECT, 0, 0, 0, (void*)&r);
+
+        rect->xs += r.xs;
+        rect->ys += r.ys;
+
+        rect->xe += r.xs;
+        rect->ye += r.ys;
+    }
+
+    return UG_RESULT_OK;
+}
+
+static UG2_RESULT _UG2_DefaultHandleMessage(UG2_MESSAGE* msg)
+{
+    if (!msg || !msg->obj) return UG_RESULT_ARG;
+
+    UG2_OBJECT* obj = NULL;
+
+    switch (msg->type)
+    {
+        /* get the client rect inside the parent */
+    case MSG_CLIENTRECT:
+        if (msg->data == NULL) return UG_RESULT_ARG;
+        msg->obj->busy = 1;
+        /* default client rect */
+        *((UG2_RECT*)msg->data) = msg->obj->rect;
+        msg->obj->busy = 0;
+        return UG_RESULT_OK;
+
+
+        /* set text */
+    case MSG_TEXT_SET:
+        msg->obj->busy = 1;
+        msg->obj->text = (const char*)msg->data;
+        msg->obj->busy = 0;
+        /* and redraw it ! */
+        return UG2_SendMessage(msg->obj, MSG_REDRAW, 0, 0, 0, NULL);
+
+        /* get text */
+    case MSG_TEXT_GET:
+        msg->obj->busy = 1;
+        (const char*)msg->data = msg->obj->text;
+        msg->obj->busy = 0;
+        return UG_RESULT_OK;
+
+
+        /* set text font */
+    case MSG_FONT_SET:
+        msg->obj->busy = 1;
+        msg->obj->font = (UG2_FONT*)msg->data;
+        msg->obj->busy = 0;
+        /* and redraw it ! */
+        return UG2_SendMessage(msg->obj, MSG_REDRAW, 0, 0, 0, NULL);
+
+        /* get text font */
+    case MSG_FONT_GET:
+        msg->obj->busy = 1;
+        (UG2_FONT*)msg->data = msg->obj->font;
+        msg->obj->busy = 0;
+        return UG_RESULT_OK;
+
+
+        /* set the foreground color */
+    case MSG_COLOR_FORE_SET:
+        if (msg->data == NULL) return UG_RESULT_ARG;
+        msg->obj->busy = 1;
+        msg->obj->colors.foreground = (UG2_COLOR)msg->data;
+        msg->obj->busy = 0;
+        return UG2_SendMessage(msg->obj, MSG_REDRAW, 0, 0, 0, NULL);
+
+        /* get the foreground color */
+    case MSG_COLOR_FORE_GET:
+        if (msg->data == NULL) return UG_RESULT_ARG;
+        *((UG2_COLOR*)msg->data) = msg->obj->colors.foreground;
+        return UG_RESULT_OK;
+
+        /* set the foreground color */
+    case MSG_COLOR_BACK_SET:
+        if (msg->data == NULL) return UG_RESULT_ARG;
+        msg->obj->busy = 1;
+        msg->obj->colors.background = (UG2_COLOR)msg->data;
+        msg->obj->busy = 0;
+        return UG2_SendMessage(msg->obj, MSG_REDRAW, 0, 0, 0, NULL);
+
+        /* get the background color */
+    case MSG_COLOR_BACK_GET:
+        if (msg->data == NULL) return UG_RESULT_ARG;
+        *((UG2_COLOR*)msg->data) = msg->obj->colors.background;
+        return UG_RESULT_OK;
+
+        /* make this object visible & repaint */
+    case MSG_SHOW:
+        msg->obj->busy = 1;
+        msg->obj->style |= STYLE_VISIBLE;
+        msg->obj->busy = 0;
+        /* and redraw it ! */
+        return UG2_SendMessage(msg->obj, MSG_REDRAW, 0, 0, 0, NULL);
+
+        /* make this object invisible & repaint */
+    case MSG_HIDE:
+        msg->obj->busy = 1;
+        msg->obj->style &= ~STYLE_VISIBLE;
+        msg->obj->busy = 0;
+        return UG2_SendMessage(msg->obj, MSG_REDRAW, 0, 0, 0, NULL);
 
 
 
+        /* special case: redraw child objects */
+    case MSG_REDRAW:
+        /* Force each object to be redrawn! */
+        for (obj = msg->obj->child; obj != NULL; obj = obj->next)
+        {
+            UG2_SendMessage(obj, MSG_REDRAW, 0, 0, 0, NULL);
+        }
+        return UG_RESULT_OK;
 
+        /* special case: focus lost */
+    case MSG_FOCUS_LOST:
+        msg->obj->busy = 1;
+        msg->obj->style &= ~STYLE_FOCUSED;
+        msg->obj->busy = 0;
+        return UG2_SendMessage(msg->obj, MSG_REDRAW, 0, 0, 0, NULL);
 
+        /* special case: focus set */
+    case MSG_FOCUS_SET:
+        msg->obj->busy = 1;
+        msg->obj->style |= STYLE_FOCUSED;
+        msg->obj->busy = 0;
+        return UG2_SendMessage(msg->obj, MSG_REDRAW, 0, 0, 0, NULL);
 
+    default:
+        return UG_RESULT_MSG_UNHANDLED;
+    }
+}
+
+UG2_RESULT UG2_SetFocus(UG2_OBJECT* obj)
+{
+    if (!obj)
+    {
+        /* TODO: make this find the actually focused obj */
+        if (_gui.active_window)
+        {
+            if (_gui.active_window->focused_child)
+            {
+                /* unfocus previously focused obj */
+                UG2_SendMessage(_gui.active_window->focused_child, MSG_FOCUS_LOST, 0, 0, 0, NULL);
+                _gui.active_window->focused_child = NULL;
+            }
+        }
+        return UG_RESULT_OK;
+    }
+
+    /* check if object can get focus */
+    if (!(obj->style & STYLE_CAN_FOCUS)) return UG_RESULT_FAIL;
+
+    if (!obj->parent) return UG_RESULT_FAIL;
+
+    if (obj->parent->focused_child)
+    {
+        /* unfocus previously focused obj */
+        UG2_SendMessage(obj->parent->focused_child, MSG_FOCUS_LOST, 0, 0, 0, NULL);
+        obj->parent->focused_child = NULL;
+    }
+
+    UG2_SendMessage(obj, MSG_FOCUS_SET, 0, 0, 0, NULL);
+    obj->parent->focused_child = obj;
+
+    return UG_RESULT_OK;
+}
+
+UG2_BOOL UG2_PointInRect(UG2_POINT* p, UG2_RECT* r)
+{
+    if (!p || !r) return 0;
+
+    if ((p->x >= r->xs) && (p->y >= r->ys))
+    {
+        return ((p->x <= r->xe) && (p->y <= r->ye)) ? 1 : 0;
+    }
+    return 0;
+}
+
+UG2_RESULT UG2_ObjectInPoint(UG2_POINT* p, UG2_OBJECT** obj)
+{
+    UG2_OBJECT* top = _gui.active_window;
+    UG2_OBJECT* c = NULL;
+    UG2_POINT p_rel = *p;
+    UG2_RECT child_rect;
+
+    UG2_RectFromDims(
+        &child_rect,
+        0, 0, 0, 0);
+
+    if (!p || !obj) return UG_RESULT_ARG;
+    *obj = NULL;
+
+    if (!top) return UG_RESULT_OK;
+
+    /* first top element would be the windows, but for now, it will be the only focused window */
+    if (!UG2_PointInRect(&p_rel, &top->rect))
+        return UG_RESULT_OK;
+
+    /* loop through each child object of this object */
+    for (c = top->child; c; c = c->next)
+    {
+        UG2_GetObjectScreenRect(c, &child_rect);
+        if (UG2_PointInRect(p, &child_rect))
+        {
+            *obj = c;
+            return UG_RESULT_OK;
+        }
+    }
+
+    return UG_RESULT_OK;
+}
+
+UG2_RESULT UG2_SystemSendMessage(UG_U16 type, UG_U8 id, UG_U8 sub_id, UG_U8 event, void* data)
+{
+    /* similar to UG2_SendMessage, but for messages that the main gui should consume from the system */
+    UG2_OBJECT* obj = NULL;
+    UG2_RESULT res = UG_RESULT_MSG_UNHANDLED;
+
+    static UG2_OBJECT* pressed_obj = NULL;
+
+    switch (type)
+    {
+    case MSG_TOUCH_DOWN:
+        res = UG2_ObjectInPoint((UG2_POINT*)data, &obj);
+        if (res != UG_RESULT_OK)
+            goto ret;
+
+        if ((pressed_obj != obj) && pressed_obj)
+        {
+            /* simulate a touch up on the previously pressed obj */
+            UG2_SendMessage(pressed_obj, MSG_TOUCH_UP, 0, 0, 0, data);
+        }
+
+        if (!obj)
+        {
+            /* make the currently focused obj lose its focus */
+            UG2_SetFocus(NULL);
+            goto ret;
+        }
+
+        if (!obj->parent)
+            goto ret;
+
+        if (obj != obj->parent->focused_child)
+        {
+            /* give the new object the focus first */
+            UG2_SetFocus(obj);
+        }
+
+        pressed_obj = obj;
+
+        /* send the actual event to the focused obj */
+        return UG2_SendMessage(obj, type, id, sub_id, event, data);
+
+    case MSG_TOUCH_UP:
+        res = UG2_ObjectInPoint((UG2_POINT*)data, &obj);
+        if ((res != UG_RESULT_OK))
+            goto ret;
+
+        if ((pressed_obj != obj) && pressed_obj)
+        {
+            /* simulate a touch up on the previously pressed obj */
+            UG2_SendMessage(pressed_obj, MSG_TOUCH_UP, 0, 0, 0, data);
+        }
+
+        pressed_obj = NULL;
+
+        if (!obj)
+            goto ret;
+
+        /* send the actual event to the focused obj */
+        return UG2_SendMessage(obj, type, id, sub_id, event, data);
+
+    default:
+        break;
+    }
+
+ret:
+    return res;
+}
+
+UG2_RESULT UG2_ShowObject(UG2_OBJECT* obj)
+{
+    return UG2_SendMessage(obj, MSG_SHOW, 0, 0, 0, NULL);
+}
 
 UG2_RESULT UG2_SendMessage(UG2_OBJECT* obj, UG_U16 type, UG_U8 id, UG_U8 sub_id, UG_U8 event, void* data)
 {
@@ -684,16 +1148,23 @@ UG2_RESULT UG2_SendMessage(UG2_OBJECT* obj, UG_U16 type, UG_U8 id, UG_U8 sub_id,
     //enqueue((node_t**)_gui.message_pump, (void*)msg);
 
     UG2_RESULT res = UG_RESULT_MSG_UNHANDLED;
-    if (obj->handle_message) obj->handle_message(msg);
+
+    if (obj->handle_message)
+        res = obj->handle_message(msg);
+
+    /* if msg unhandled, or if MSG_REDRAW or MSG_FOCUS*, trigger the default handler */
+    if ((res == UG_RESULT_MSG_UNHANDLED) ||
+        (msg->type == MSG_REDRAW) ||
+        (msg->type == MSG_FOCUS_LOST) ||
+        (msg->type == MSG_FOCUS_SET))
+        res = _UG2_DefaultHandleMessage(msg);
+
+    if (obj->user_handler)
+        obj->user_handler(msg);
 
     free(msg);
 
     return res;
-}
-
-UG2_RESULT _UG2_DefaultHandleMessage(UG2_MESSAGE* msg)
-{
-    return UG_RESULT_MSG_UNHANDLED;
 }
 
 
