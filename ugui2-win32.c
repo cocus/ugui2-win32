@@ -219,7 +219,8 @@ UG2_RESULT btn_handler(UG2_MESSAGE* msg)
     if (msg->obj == UG2_BaseObject(&btn0))
     {
         UG_U8 pb = 0;
-        if (msg->type == MSG_TOUCH_UP)
+        if ((msg->type == MSG_TOUCH_UP) ||
+            ((msg->type == MSG_KEY_UP) && (msg->id = ' ')))
         {
             UG2_ProgressGetProgress(&pgb0, &pb);
 
@@ -446,22 +447,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     }
 
+    case WM_KEYDOWN:
+    {
+        /* wParam is a VK_*, casting it to a value is not right, but will do */
+        UG2_SystemSendMessage(MSG_KEY_DOWN, (UG_U8)(wParam), 0, 0, NULL);
+        break;
+    }
     case WM_KEYUP:
     {
-        switch (wParam)
-        {
-        case VK_TAB:
-            //UG_FocusNext(&wnd);// _UG_SearchObject(&wnd, OBJ_TYPE_BUTTON, BTN_ID_0);
-            break;
-        }
-
+        /* wParam is a VK_*, casting it to a value is not right, but will do */
+        UG2_SystemSendMessage(MSG_KEY_UP, (UG_U8)(wParam), 0, 0, NULL);
         break;
     }
     case WM_LBUTTONDOWN:
     {
         UG2_POINT p = { .x = GET_X_LPARAM(lParam), .y = GET_Y_LPARAM(lParam) };
         UG2_SystemSendMessage(MSG_TOUCH_DOWN, UG2_TOUCH_ID_MAIN, 0, 0, &p);
-        //UG_TouchUpdate(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), TOUCH_STATE_PRESSED);
         break;
     }
 
@@ -469,7 +470,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
         UG2_POINT p = { .x = GET_X_LPARAM(lParam), .y = GET_Y_LPARAM(lParam) };
         UG2_SystemSendMessage(MSG_TOUCH_UP, UG2_TOUCH_ID_MAIN, 0, 0, &p);
-        //UG_TouchUpdate(-1, -1, TOUCH_STATE_RELEASED);
         break;
     }
 
@@ -495,7 +495,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hWnd, &ps);
         // TODO: Agregar cualquier código de dibujo que use hDC aquí...
-        BitBlt(GetDC(_main_hwnd), 0, 0, 640, 200, _hMemDC, 0, 0, SRCCOPY);
+        BitBlt(hdc, 0, 0, 640, 200, _hMemDC, 0, 0, SRCCOPY);
 
         EndPaint(hWnd, &ps);
     }

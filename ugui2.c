@@ -768,6 +768,10 @@ UG2_RESULT UG2_ObjectSetText(UG2_OBJECT* obj, const char* str)
 {
     return UG2_SendMessage(obj, MSG_TEXT_SET, 0, 0, 0, (void*)str);
 }
+UG2_RESULT UG2_ObjectSetTextAlign(UG2_OBJECT* obj, const UG_U8 align)
+{
+    return UG2_SendMessage(obj, MSG_TEXT_ALIGN_SET, 0, 0, 0, align);
+}
 UG2_RESULT UG2_ObjectSetFont(UG2_OBJECT* obj, UG2_FONT* font)
 {
     return UG2_SendMessage(obj, MSG_FONT_SET, 0, 0, 0, (void*)font);
@@ -868,6 +872,21 @@ static UG2_RESULT _UG2_DefaultHandleMessage(UG2_MESSAGE* msg)
         msg->obj->busy = 0;
         return UG_RESULT_OK;
 
+        /* set text align */
+    case MSG_TEXT_ALIGN_SET:
+        msg->obj->busy = 1;
+        msg->obj->text_align = (UG_U8)msg->data;
+        msg->obj->busy = 0;
+        /* and redraw it ! */
+        return UG2_SendMessage(msg->obj, MSG_REDRAW, 0, 0, 0, NULL);
+
+        /* get text align */
+    case MSG_TEXT_ALIGN_GET:
+        if (msg->data == NULL) return UG_RESULT_ARG;
+        msg->obj->busy = 1;
+        *((UG_U8*)msg->data) = msg->obj->text_align;
+        msg->obj->busy = 0;
+        return UG_RESULT_OK;
 
         /* set text */
     case MSG_TEXT_SET:
@@ -879,8 +898,9 @@ static UG2_RESULT _UG2_DefaultHandleMessage(UG2_MESSAGE* msg)
 
         /* get text */
     case MSG_TEXT_GET:
+        if (msg->data == NULL) return UG_RESULT_ARG;
         msg->obj->busy = 1;
-        (const char*)msg->data = msg->obj->text;
+        *((const char**)msg->data) = msg->obj->text;
         msg->obj->busy = 0;
         return UG_RESULT_OK;
 
@@ -895,8 +915,9 @@ static UG2_RESULT _UG2_DefaultHandleMessage(UG2_MESSAGE* msg)
 
         /* get text font */
     case MSG_FONT_GET:
+        if (msg->data == NULL) return UG_RESULT_ARG;
         msg->obj->busy = 1;
-        (UG2_FONT*)msg->data = msg->obj->font;
+        *((UG2_FONT**)msg->data) = msg->obj->font;
         msg->obj->busy = 0;
         return UG_RESULT_OK;
 
@@ -912,7 +933,9 @@ static UG2_RESULT _UG2_DefaultHandleMessage(UG2_MESSAGE* msg)
         /* get the foreground color */
     case MSG_COLOR_FORE_GET:
         if (msg->data == NULL) return UG_RESULT_ARG;
+        msg->obj->busy = 1;
         *((UG2_COLOR*)msg->data) = msg->obj->colors.foreground;
+        msg->obj->busy = 0;
         return UG_RESULT_OK;
 
         /* set the foreground color */
@@ -926,7 +949,9 @@ static UG2_RESULT _UG2_DefaultHandleMessage(UG2_MESSAGE* msg)
         /* get the background color */
     case MSG_COLOR_BACK_GET:
         if (msg->data == NULL) return UG_RESULT_ARG;
+        msg->obj->busy = 1;
         *((UG2_COLOR*)msg->data) = msg->obj->colors.background;
+        msg->obj->busy = 0;
         return UG_RESULT_OK;
 
         /* make this object visible & repaint */
@@ -996,16 +1021,68 @@ UG2_RESULT UG2_SetFocus(UG2_OBJECT* obj)
 
     if (!obj->parent) return UG_RESULT_FAIL;
 
-    if (obj->parent->focused_child)
+    if (!_gui.active_window) return UG_RESULT_FAIL;
+
+    if (_gui.active_window->focused_child)
     {
         /* unfocus previously focused obj */
-        UG2_SendMessage(obj->parent->focused_child, MSG_FOCUS_LOST, 0, 0, 0, NULL);
-        obj->parent->focused_child = NULL;
+        UG2_SendMessage(_gui.active_window->focused_child, MSG_FOCUS_LOST, 0, 0, 0, NULL);
+        _gui.active_window->focused_child = NULL;
     }
 
     UG2_SendMessage(obj, MSG_FOCUS_SET, 0, 0, 0, NULL);
-    obj->parent->focused_child = obj;
+    _gui.active_window->focused_child = obj;
 
+    return UG_RESULT_OK;
+}
+
+UG2_RESULT UG2_GetNextFocusable(UG2_OBJECT** obj)
+{
+    if (!obj) return UG_RESULT_ARG;
+
+    *obj = NULL;
+
+    /* TODO: this is a mess */
+
+    UG2_OBJECT* active = _gui.active_window;
+
+    if (!active) return UG_RESULT_FAIL;
+
+    UG2_OBJECT* curr_focus = active->focused_child ? active->focused_child : active->child;
+
+    /* nothing to select */
+    if (!curr_focus) return UG_RESULT_OK;
+
+    UG2_OBJECT* o = curr_focus->next;
+
+    for (; o; o = o->next)
+    {
+        if (o->style & STYLE_CAN_FOCUS)
+        {
+            /* good candidate found! */
+            *obj = o;
+            return UG_RESULT_OK;
+        }
+    }
+
+    /* nothing to select */
+    if (curr_focus == active->child) return UG_RESULT_OK;
+
+    /* start again, but this time from the first child */
+    for (o = active->child; o; o = o->next)
+    {
+        /* nothing to select :( */
+        if (o == curr_focus) return UG_RESULT_OK;
+
+        if (o->style & STYLE_CAN_FOCUS)
+        {
+            /* good candidate found! */
+            *obj = o;
+            return UG_RESULT_OK;
+        }
+    }
+
+    /* not found! */
     return UG_RESULT_OK;
 }
 
@@ -1114,6 +1191,29 @@ UG2_RESULT UG2_SystemSendMessage(UG_U16 type, UG_U8 id, UG_U8 sub_id, UG_U8 even
 
         /* send the actual event to the focused obj */
         return UG2_SendMessage(obj, type, id, sub_id, event, data);
+
+    case MSG_KEY_UP:
+        /* first forward the message to the focused object */
+        if (_gui.active_window && _gui.active_window->focused_child)
+            res = UG2_SendMessage(_gui.active_window->focused_child, type, id, sub_id, event, data);
+
+        /* then check if it's required to move the focus to another object */
+        if (id == '\t') /* move focus to next available control */
+        {
+            res = UG2_GetNextFocusable(&obj);
+            if ((res != UG_RESULT_OK) || !obj)
+                goto ret;
+            
+            /* now set the focus */
+            res = UG2_SetFocus(obj);
+        }
+        break;
+
+    case MSG_KEY_DOWN:
+        /* forward the message to the focused object */
+        if (_gui.active_window && _gui.active_window->focused_child)
+            res = UG2_SendMessage(_gui.active_window->focused_child, type, id, sub_id, event, data);
+        break;
 
     default:
         break;

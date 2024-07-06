@@ -210,6 +210,8 @@ typedef enum
     MSG_COLOR_BACK_GET,
     MSG_TEXT_SET,
     MSG_TEXT_GET,
+    MSG_TEXT_ALIGN_SET,
+    MSG_TEXT_ALIGN_GET,
     MSG_SHOW,
     MSG_HIDE,
     MSG_FONT_SET,
@@ -418,8 +420,7 @@ UG2_RESULT UG2_ObjectGetBackColor(UG2_OBJECT* obj, UG2_COLOR* c);
 UG2_RESULT UG2_ObjectSetText(UG2_OBJECT* obj, const char* str);
 UG2_RESULT UG2_ObjectSetFont(UG2_OBJECT* obj, UG2_FONT* font);
 
-UG2_RESULT UG2_ObjectSetTextAlign(UG2_OBJECT* obj, const char* str);
-UG2_RESULT UG2_ObjectSetFont(UG2_OBJECT* obj, UG2_FONT* font);
+UG2_RESULT UG2_ObjectSetTextAlign(UG2_OBJECT* obj, const UG_U8 align);
 
 UG2_RESULT UG2_SetParent(UG2_OBJECT* new_parent, UG2_OBJECT* obj);
 

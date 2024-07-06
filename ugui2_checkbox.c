@@ -112,6 +112,12 @@ static UG2_RESULT _UG2_CheckboxHandleMessage(UG2_MESSAGE* msg)
         cb->base_object.busy = 0;
         return UG_RESULT_OK;
 
+    case MSG_KEY_DOWN:
+        if (msg->id != ' ') return UG_RESULT_MSG_UNHANDLED;
+        /* TODO: something different */
+        __fallthrough;
+        /* fallthrough */
+
         /* press */
     case MSG_TOUCH_DOWN:
         cb->base_object.busy = 1;
@@ -133,6 +139,12 @@ static UG2_RESULT _UG2_CheckboxHandleMessage(UG2_MESSAGE* msg)
         }
         cb->base_object.busy = 0;
         return UG2_SendMessage(msg->obj, MSG_REDRAW, 0, 0, 0, NULL);
+
+    case MSG_KEY_UP:
+        if (msg->id != ' ') return UG_RESULT_MSG_UNHANDLED;
+        /* TODO: something different */
+        __fallthrough;
+        /* fallthrough */
 
         /* release press */
     case MSG_TOUCH_UP:
